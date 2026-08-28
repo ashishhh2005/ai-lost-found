@@ -3,13 +3,9 @@ from sklearn.metrics.pairwise import cosine_similarity
 from datetime import datetime
 
 
-# =========================================
+# ============================================================
 # AI MODEL
-# =========================================
-
-# IMPORTANT:
-# The model is NOT loaded when the server starts.
-# It will be loaded only when AI matching is needed.
+# ============================================================
 
 model = None
 
@@ -19,15 +15,20 @@ def get_model():
 
     if model is None:
         print("Loading AI model...")
-        model = SentenceTransformer("all-MiniLM-L6-v2")
+
+        model = SentenceTransformer(
+            "sentence-transformers/all-MiniLM-L6-v2",
+            device="cpu"
+        )
+
         print("AI model loaded successfully!")
 
     return model
 
 
-# =========================================
+# ============================================================
 # TEXT SIMILARITY
-# =========================================
+# ============================================================
 
 def calculate_text_similarity(text1, text2):
 
@@ -43,7 +44,10 @@ def calculate_text_similarity(text1, text2):
     ai_model = get_model()
 
     embeddings = ai_model.encode(
-        [text1, text2]
+        [text1, text2],
+        batch_size=2,
+        show_progress_bar=False,
+        convert_to_numpy=True
     )
 
     similarity = cosine_similarity(
@@ -59,9 +63,9 @@ def calculate_text_similarity(text1, text2):
     )
 
 
-# =========================================
+# ============================================================
 # ITEM NAME SIMILARITY
-# =========================================
+# ============================================================
 
 def calculate_item_name_similarity(item1, item2):
 
@@ -74,7 +78,6 @@ def calculate_item_name_similarity(item1, item2):
     if not item1 or not item2:
         return 0.0
 
-    # Exact match
     if item1 == item2:
         return 1.0
 
@@ -84,9 +87,9 @@ def calculate_item_name_similarity(item1, item2):
     )
 
 
-# =========================================
+# ============================================================
 # LOCATION SIMILARITY
-# =========================================
+# ============================================================
 
 def calculate_location_similarity(
     location1,
@@ -102,7 +105,6 @@ def calculate_location_similarity(
     if not location1 or not location2:
         return 0.0
 
-    # Exact location
     if location1 == location2:
         return 1.0
 
@@ -141,9 +143,9 @@ def calculate_location_similarity(
     )
 
 
-# =========================================
+# ============================================================
 # TIME PARSER
-# =========================================
+# ============================================================
 
 def parse_datetime(
     date_value,
@@ -155,10 +157,6 @@ def parse_datetime(
 
     date_string = str(date_value).strip()
     time_string = str(time_value).strip()
-
-    # -----------------------------------------
-    # Remove seconds if present
-    # -----------------------------------------
 
     if len(time_string) >= 8:
 
@@ -173,10 +171,6 @@ def parse_datetime(
 
             pass
 
-    # -----------------------------------------
-    # Standard format
-    # -----------------------------------------
-
     try:
 
         return datetime.strptime(
@@ -187,10 +181,6 @@ def parse_datetime(
     except ValueError:
 
         pass
-
-    # -----------------------------------------
-    # Try ISO datetime
-    # -----------------------------------------
 
     try:
 
@@ -203,9 +193,9 @@ def parse_datetime(
         return None
 
 
-# =========================================
+# ============================================================
 # TIME SIMILARITY
-# =========================================
+# ============================================================
 
 def calculate_time_similarity(
     date1,
@@ -224,10 +214,6 @@ def calculate_time_similarity(
         time2
     )
 
-    # -----------------------------------------
-    # Invalid date/time
-    # -----------------------------------------
-
     if datetime1 is None or datetime2 is None:
 
         print(
@@ -240,10 +226,6 @@ def calculate_time_similarity(
 
         return 0.0
 
-    # -----------------------------------------
-    # Calculate difference
-    # -----------------------------------------
-
     difference = abs(
         (
             datetime1 - datetime2
@@ -253,10 +235,6 @@ def calculate_time_similarity(
     hours_difference = (
         difference / 3600
     )
-
-    # -----------------------------------------
-    # Time scoring
-    # -----------------------------------------
 
     if hours_difference <= 1:
 
@@ -287,9 +265,9 @@ def calculate_time_similarity(
         return 0.0
 
 
-# =========================================
+# ============================================================
 # FINAL AI SCORE
-# =========================================
+# ============================================================
 
 def calculate_final_score(
     item_name_score,
@@ -298,18 +276,10 @@ def calculate_final_score(
     time_score
 ):
 
-    # =====================================
-    # WEIGHTS
-    # =====================================
-
     item_name_weight = 0.30
     text_weight = 0.35
     location_weight = 0.20
     time_weight = 0.15
-
-    # =====================================
-    # CALCULATE FINAL SCORE
-    # =====================================
 
     final_score = (
 
