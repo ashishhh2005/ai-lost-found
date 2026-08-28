@@ -186,6 +186,57 @@ def report_lost(
 
 
 # =========================================
+# GET LATEST LOST ITEM
+# =========================================
+#
+# This endpoint is used by the React frontend
+# to recover the latest lost item ID.
+#
+# Example:
+# GET /lost-items/latest
+#
+# =========================================
+
+@app.get("/lost-items/latest")
+def get_latest_lost_item(
+    db: Session = Depends(get_db)
+):
+
+    latest_item = (
+        db.query(LostItem)
+        .order_by(LostItem.id.desc())
+        .first()
+    )
+
+    # -----------------------------------------
+    # NO LOST ITEMS
+    # -----------------------------------------
+
+    if not latest_item:
+
+        return {
+            "success": False,
+            "item": None
+        }
+
+    # -----------------------------------------
+    # RETURN LATEST LOST ITEM
+    # -----------------------------------------
+
+    return {
+        "success": True,
+        "item": {
+            "id": latest_item.id,
+            "item_name": latest_item.item_name,
+            "description": latest_item.description,
+            "location": latest_item.location,
+            "date": latest_item.date,
+            "time": latest_item.time
+        }
+    }
+
+
+# =========================================
 # REPORT FOUND ITEM
 # =========================================
 
@@ -292,7 +343,6 @@ def find_matches(
             "matches": []
         }
 
-
     # -----------------------------------------
     # GET ALL FOUND ITEMS
     # -----------------------------------------
@@ -305,14 +355,11 @@ def find_matches(
 
     matches = []
 
-
     # =========================================
-    # IMPORTANT:
     # REMOVE OLD DUPLICATE DATABASE RECORDS
     # =========================================
 
     seen_items = set()
-
 
     # -----------------------------------------
     # COMPARE ITEMS
@@ -333,7 +380,6 @@ def find_matches(
             str(found_item.contact).strip().lower()
         )
 
-
         # =====================================
         # SKIP DUPLICATE FOUND ITEM
         # =====================================
@@ -342,7 +388,6 @@ def find_matches(
             continue
 
         seen_items.add(item_key)
-
 
         # =====================================
         # CHECK IF FOUND ITEM HAS BEEN RETURNED
@@ -357,14 +402,12 @@ def find_matches(
             .first()
         )
 
-
         # -------------------------------------
         # SKIP RETURNED FOUND ITEMS
         # -------------------------------------
 
         if already_returned:
             continue
-
 
         # =====================================
         # ITEM NAME SIMILARITY
@@ -375,7 +418,6 @@ def find_matches(
             found_item.item_name
         )
 
-
         # =====================================
         # DESCRIPTION SIMILARITY
         # =====================================
@@ -385,7 +427,6 @@ def find_matches(
             found_item.description
         )
 
-
         # =====================================
         # LOCATION SIMILARITY
         # =====================================
@@ -394,7 +435,6 @@ def find_matches(
             lost_item.location,
             found_item.location
         )
-
 
         # =====================================
         # TIME SIMILARITY
@@ -407,7 +447,6 @@ def find_matches(
             found_item.time
         )
 
-
         # =====================================
         # FINAL AI SCORE
         # =====================================
@@ -419,7 +458,6 @@ def find_matches(
             time_score
         )
 
-
         # =====================================
         # CONVERT TO PERCENTAGE
         # =====================================
@@ -429,14 +467,12 @@ def find_matches(
             2
         )
 
-
         # =====================================
         # ONLY SHOW MATCHES >= 40%
         # =====================================
 
         if final_percentage < 40:
             continue
-
 
         # =====================================
         # MATCH LEVEL
@@ -453,7 +489,6 @@ def find_matches(
         else:
 
             match_level = "Possible Match"
-
 
         # =====================================
         # ADD MATCH
@@ -500,7 +535,6 @@ def find_matches(
             "match_level": match_level
         })
 
-
     # =========================================
     # SORT HIGHEST SCORE FIRST
     # =========================================
@@ -510,13 +544,11 @@ def find_matches(
         reverse=True
     )
 
-
     # =========================================
     # LIMIT RESULTS
     # =========================================
 
     matches = matches[:10]
-
 
     # =========================================
     # RETURN MATCHES
@@ -559,7 +591,6 @@ def confirm_match(
             "message": "Lost item not found"
         }
 
-
     # -----------------------------------------
     # CHECK FOUND ITEM
     # -----------------------------------------
@@ -579,7 +610,6 @@ def confirm_match(
             "message": "Found item not found"
         }
 
-
     # -----------------------------------------
     # CHECK EXISTING SAME CONFIRMATION
     # -----------------------------------------
@@ -593,7 +623,6 @@ def confirm_match(
         .first()
     )
 
-
     # -----------------------------------------
     # SAME MATCH ALREADY CONFIRMED
     # -----------------------------------------
@@ -601,49 +630,29 @@ def confirm_match(
     if existing_match:
 
         return {
-
             "success": True,
-
             "already_confirmed": True,
-
-            "message":
-                "This match has already been confirmed.",
-
+            "message": "This match has already been confirmed.",
             "confirmation": {
-
-                "id":
-                    existing_match.id,
-
-                "lost_item_id":
-                    existing_match.lost_item_id,
-
-                "found_item_id":
-                    existing_match.found_item_id,
-
-                "contact":
-                    existing_match.contact,
-
-                "status":
-                    existing_match.status
+                "id": existing_match.id,
+                "lost_item_id": existing_match.lost_item_id,
+                "found_item_id": existing_match.found_item_id,
+                "contact": existing_match.contact,
+                "status": existing_match.status
             }
         }
-
 
     # =========================================
     # CHECK IF FOUND ITEM IS ALREADY CLAIMED
     # =========================================
 
     found_item_already_confirmed = (
-
         db.query(ConfirmedMatch)
-
         .filter(
             ConfirmedMatch.found_item_id == request.found_item_id
         )
-
         .first()
     )
-
 
     # -----------------------------------------
     # FOUND ITEM ALREADY CLAIMED
@@ -652,50 +661,31 @@ def confirm_match(
     if found_item_already_confirmed:
 
         return {
-
             "success": False,
-
             "already_claimed": True,
-
             "message":
                 "This found item has already been claimed by another lost item.",
-
             "confirmation": {
-
-                "id":
-                    found_item_already_confirmed.id,
-
+                "id": found_item_already_confirmed.id,
                 "lost_item_id":
                     found_item_already_confirmed.lost_item_id,
-
                 "found_item_id":
                     found_item_already_confirmed.found_item_id,
-
                 "status":
                     found_item_already_confirmed.status
             }
         }
-
 
     # =========================================
     # CREATE NEW CONFIRMATION
     # =========================================
 
     new_confirmation = ConfirmedMatch(
-
-        lost_item_id=
-            request.lost_item_id,
-
-        found_item_id=
-            request.found_item_id,
-
-        contact=
-            found_item.contact,
-
-        status=
-            "confirmed"
+        lost_item_id=request.lost_item_id,
+        found_item_id=request.found_item_id,
+        contact=found_item.contact,
+        status="confirmed"
     )
-
 
     # =========================================
     # SAVE CONFIRMATION
@@ -725,70 +715,47 @@ def confirm_match(
         if existing_match:
 
             return {
-
                 "success": True,
-
                 "already_confirmed": True,
-
                 "message":
                     "This match has already been confirmed.",
-
                 "confirmation": {
-
-                    "id":
-                        existing_match.id,
-
+                    "id": existing_match.id,
                     "lost_item_id":
                         existing_match.lost_item_id,
-
                     "found_item_id":
                         existing_match.found_item_id,
-
                     "contact":
                         existing_match.contact,
-
                     "status":
                         existing_match.status
                 }
             }
 
-
         return {
-
             "success": False,
-
             "message":
                 "Could not confirm this match."
         }
-
 
     # =========================================
     # RETURN NEW CONFIRMATION
     # =========================================
 
     return {
-
         "success": True,
-
         "already_confirmed": False,
-
         "message":
             "Match confirmed successfully",
-
         "confirmation": {
-
             "id":
                 new_confirmation.id,
-
             "lost_item_id":
                 new_confirmation.lost_item_id,
-
             "found_item_id":
                 new_confirmation.found_item_id,
-
             "contact":
                 new_confirmation.contact,
-
             "status":
                 new_confirmation.status
         }
@@ -816,7 +783,6 @@ def update_confirmed_match_status(
         "returned"
     ]
 
-
     # -----------------------------------------
     # VALIDATE STATUS
     # -----------------------------------------
@@ -824,13 +790,10 @@ def update_confirmed_match_status(
     if request.status not in allowed_statuses:
 
         return {
-
             "success": False,
-
             "message":
                 "Invalid status. Allowed statuses are: confirmed, contacted, returned."
         }
-
 
     # -----------------------------------------
     # FIND CONFIRMATION
@@ -844,17 +807,13 @@ def update_confirmed_match_status(
         .first()
     )
 
-
     if not confirmation:
 
         return {
-
             "success": False,
-
             "message":
                 "Confirmation not found."
         }
-
 
     # -----------------------------------------
     # UPDATE STATUS
@@ -866,32 +825,23 @@ def update_confirmed_match_status(
 
     db.refresh(confirmation)
 
-
     # -----------------------------------------
     # RETURN UPDATED CONFIRMATION
     # -----------------------------------------
 
     return {
-
         "success": True,
-
         "message":
             "Match status updated successfully.",
-
         "confirmation": {
-
             "id":
                 confirmation.id,
-
             "lost_item_id":
                 confirmation.lost_item_id,
-
             "found_item_id":
                 confirmation.found_item_id,
-
             "contact":
                 confirmation.contact,
-
             "status":
                 confirmation.status
         }
@@ -921,7 +871,6 @@ def get_confirmed_matches(
 
     results = []
 
-
     # -----------------------------------------
     # BUILD CONFIRMED MATCH DATA
     # -----------------------------------------
@@ -941,7 +890,6 @@ def get_confirmed_matches(
             .first()
         )
 
-
         # =====================================
         # FIND FOUND ITEM
         # =====================================
@@ -954,7 +902,6 @@ def get_confirmed_matches(
             )
             .first()
         )
-
 
         # =====================================
         # ADD RESULT
@@ -1008,18 +955,14 @@ def get_confirmed_matches(
                 confirmation.status
         })
 
-
     # =========================================
     # RETURN CONFIRMED MATCHES
     # =========================================
 
     return {
-
         "success": True,
-
         "count":
             len(results),
-
         "confirmed_matches":
             results
     }
