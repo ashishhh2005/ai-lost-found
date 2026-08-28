@@ -1,16 +1,16 @@
 import { useState } from "react";
-import "./ReportFound.css";
+import "./ReportLost.css";
 
 const API_URL =
-  import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+  import.meta.env.VITE_API_URL ||
+  "https://ai-lost-found-bamz.onrender.com";
 
-function ReportFound() {
+function ReportLost({ onSubmitted }) {
   const [itemName, setItemName] = useState("");
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
-  const [contact, setContact] = useState("");
 
   const [message, setMessage] = useState("");
 
@@ -21,63 +21,57 @@ function ReportFound() {
 
     try {
       const response = await fetch(
-        `${API_URL}/report-found`,
+        `${API_URL}/report-lost`,
         {
           method: "POST",
-
           headers: {
             "Content-Type": "application/json",
           },
-
           body: JSON.stringify({
             item_name: itemName,
             description: description,
             location: location,
             date: date,
             time: time,
-            contact: contact,
           }),
         }
       );
 
       const data = await response.json();
 
-      if (response.ok) {
-        // =========================================
-        // DUPLICATE FOUND ITEM
-        // =========================================
-
-        if (data.duplicate === true) {
-          setMessage(
-            `This found item has already been reported. ID: ${data.item.id}`
-          );
-
-          return;
-        }
-
-        // =========================================
-        // NEW FOUND ITEM
-        // =========================================
-
-        setMessage(
-          `Found item reported successfully! ID: ${data.item.id}`
-        );
-
-        setItemName("");
-        setDescription("");
-        setLocation("");
-        setDate("");
-        setTime("");
-        setContact("");
-      } else {
+      if (!response.ok) {
         setMessage(
           data.detail ||
             data.message ||
             "Something went wrong."
         );
+        return;
+      }
+
+      const id = data?.item?.id;
+
+      if (!id) {
+        setMessage(
+          "Lost item was submitted, but no item ID was returned."
+        );
+        return;
+      }
+
+      setMessage(
+        `Lost item reported successfully! ID: ${id}`
+      );
+
+      setItemName("");
+      setDescription("");
+      setLocation("");
+      setDate("");
+      setTime("");
+
+      if (onSubmitted) {
+        onSubmitted(id);
       }
     } catch (error) {
-      console.error(error);
+      console.error("Report Lost Error:", error);
 
       setMessage(
         "Cannot connect to the backend."
@@ -89,15 +83,13 @@ function ReportFound() {
     <div className="report-page">
       <div className="report-container">
 
-        <h1>Report Found Item</h1>
+        <h1>Report Lost Item</h1>
 
         <p>
-          Enter the details of the item you found.
+          Enter the details of the item you lost.
         </p>
 
         <form onSubmit={handleSubmit}>
-
-          {/* ITEM NAME */}
 
           <label>Item Name</label>
 
@@ -111,8 +103,6 @@ function ReportFound() {
             required
           />
 
-          {/* DESCRIPTION */}
-
           <label>Description</label>
 
           <textarea
@@ -123,8 +113,6 @@ function ReportFound() {
             }
             required
           />
-
-          {/* LOCATION */}
 
           <label>Location</label>
 
@@ -138,8 +126,6 @@ function ReportFound() {
             required
           />
 
-          {/* DATE */}
-
           <label>Date</label>
 
           <input
@@ -150,8 +136,6 @@ function ReportFound() {
             }
             required
           />
-
-          {/* TIME */}
 
           <label>Time</label>
 
@@ -164,34 +148,11 @@ function ReportFound() {
             required
           />
 
-          {/* CONTACT */}
-
-          <label>Contact Information</label>
-
-          <input
-            type="text"
-            placeholder="Example: 9876543210 or email@example.com"
-            value={contact}
-            onChange={(e) =>
-              setContact(e.target.value)
-            }
-            required
-          />
-
-          <small className="contact-help">
-            Provide a phone number or email so the owner
-            can contact you.
-          </small>
-
-          {/* SUBMIT */}
-
           <button type="submit">
-            Submit Found Item
+            Submit Lost Item
           </button>
 
         </form>
-
-        {/* MESSAGE */}
 
         {message && (
           <p className="form-message">
@@ -204,4 +165,4 @@ function ReportFound() {
   );
 }
 
-export default ReportFound;
+export default ReportLost;
