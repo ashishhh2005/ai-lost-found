@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 
+const API_URL =
+  import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+
 function Matches({ lostItemId }) {
   const [matches, setMatches] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -25,27 +28,60 @@ function Matches({ lostItemId }) {
         setLoading(true);
         setError("");
 
-        const response = await fetch(
-          `http://127.0.0.1:8000/matches/${lostItemId}`
+        const url = `${API_URL}/matches/${lostItemId}`;
+
+        console.log("MATCH API URL:", url);
+
+        const response = await fetch(url);
+
+        console.log(
+          "MATCH RESPONSE STATUS:",
+          response.status
+        );
+
+        const responseText = await response.text();
+
+        console.log(
+          "MATCH RAW RESPONSE:",
+          responseText
         );
 
         if (!response.ok) {
-          throw new Error(`Server error: ${response.status}`);
+          throw new Error(
+            `Server error ${response.status}: ${responseText}`
+          );
         }
 
-        const data = await response.json();
+        let data;
+
+        try {
+          data = JSON.parse(responseText);
+        } catch (jsonError) {
+          throw new Error(
+            "Backend returned invalid JSON."
+          );
+        }
 
         console.log(
-          "FULL MATCH DATA:",
-          JSON.stringify(data, null, 2)
+          "MATCH JSON DATA:",
+          data
         );
+
+        // =========================================
+        // GET MATCH LIST
+        // =========================================
 
         let matchList = [];
 
         if (Array.isArray(data)) {
           matchList = data;
-        } else if (Array.isArray(data.matches)) {
+        } else if (
+          data &&
+          Array.isArray(data.matches)
+        ) {
           matchList = data.matches;
+        } else {
+          matchList = [];
         }
 
         // =========================================
@@ -54,38 +90,58 @@ function Matches({ lostItemId }) {
 
         const seen = new Set();
 
-        const uniqueMatches = matchList.filter((match) => {
-          const id =
-            match.found_item_id ??
-            match.found_id ??
-            match.item_id ??
-            match.id;
+        const uniqueMatches = matchList.filter(
+          (match) => {
+            const id =
+              match.found_item_id ??
+              match.found_id ??
+              match.item_id ??
+              match.id;
 
-          if (id !== undefined && id !== null) {
-            const key = String(id);
+            if (
+              id !== undefined &&
+              id !== null
+            ) {
+              const key = String(id);
 
-            if (seen.has(key)) {
+              if (seen.has(key)) {
+                return false;
+              }
+
+              seen.add(key);
+
+              return true;
+            }
+
+            const fallbackKey =
+              JSON.stringify(match);
+
+            if (seen.has(fallbackKey)) {
               return false;
             }
 
-            seen.add(key);
+            seen.add(fallbackKey);
+
             return true;
           }
+        );
 
-          const fallbackKey = JSON.stringify(match);
-
-          if (seen.has(fallbackKey)) {
-            return false;
-          }
-
-          seen.add(fallbackKey);
-          return true;
-        });
+        console.log(
+          "UNIQUE MATCHES:",
+          uniqueMatches
+        );
 
         setMatches(uniqueMatches);
       } catch (err) {
-        console.error("Match error:", err);
-        setError("Could not load matches.");
+        console.error(
+          "MATCH FETCH ERROR:",
+          err
+        );
+
+        setError(
+          err?.message ||
+            "Could not load matches."
+        );
       } finally {
         setLoading(false);
       }
@@ -98,31 +154,40 @@ function Matches({ lostItemId }) {
   // FILTER MATCHES
   // =========================================
 
-  const filteredMatches = matches.filter((match) => {
-    const search = searchTerm.toLowerCase().trim();
+  const filteredMatches = matches.filter(
+    (match) => {
+      const search =
+        searchTerm.toLowerCase().trim();
 
-    if (!search) {
-      return true;
+      if (!search) {
+        return true;
+      }
+
+      const itemName =
+        String(
+          match.item_name ||
+            match.title ||
+            match.name ||
+            ""
+        ).toLowerCase();
+
+      const description =
+        String(
+          match.description || ""
+        ).toLowerCase();
+
+      const location =
+        String(
+          match.location || ""
+        ).toLowerCase();
+
+      return (
+        itemName.includes(search) ||
+        description.includes(search) ||
+        location.includes(search)
+      );
     }
-
-    const itemName =
-      match.item_name ||
-      match.title ||
-      match.name ||
-      "";
-
-    const description =
-      match.description || "";
-
-    const location =
-      match.location || "";
-
-    return (
-      itemName.toLowerCase().includes(search) ||
-      description.toLowerCase().includes(search) ||
-      location.toLowerCase().includes(search)
-    );
-  });
+  );
 
   // =========================================
   // GET MATCH LEVEL
@@ -179,40 +244,71 @@ function Matches({ lostItemId }) {
       setConfirming(true);
       setAlreadyConfirmed(false);
 
+      const foundItemId =
+        match.found_item_id ??
+        match.found_id ??
+        match.item_id ??
+        match.id;
+
+      if (
+        foundItemId === undefined ||
+        foundItemId === null
+      ) {
+        alert(
+          "Found item ID is missing."
+        );
+
+        return;
+      }
+
       const response = await fetch(
-        "http://127.0.0.1:8000/confirm-match",
+        `${API_URL}/confirm-match`,
         {
           method: "POST",
 
           headers: {
-            "Content-Type": "application/json",
+            "Content-Type":
+              "application/json",
           },
 
           body: JSON.stringify({
-            lost_item_id: Number(lostItemId),
-            found_item_id: Number(match.found_item_id),
+            lost_item_id:
+              Number(lostItemId),
+
+            found_item_id:
+              Number(foundItemId),
           }),
         }
       );
 
+      const responseText =
+        await response.text();
+
       if (!response.ok) {
         throw new Error(
-          `Server error: ${response.status}`
+          `Server error ${response.status}: ${responseText}`
         );
       }
 
-      const data = await response.json();
+      let data;
+
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        throw new Error(
+          "Backend returned invalid JSON."
+        );
+      }
 
       console.log(
         "CONFIRMATION RESPONSE:",
-        JSON.stringify(data, null, 2)
+        data
       );
 
-      // =========================================
-      // ALREADY CONFIRMED
-      // =========================================
-
-      if (data.success && data.already_confirmed) {
+      if (
+        data.success &&
+        data.already_confirmed
+      ) {
         setAlreadyConfirmed(true);
 
         setConfirmedMatch({
@@ -231,11 +327,10 @@ function Matches({ lostItemId }) {
         return;
       }
 
-      // =========================================
-      // NEW CONFIRMATION
-      // =========================================
-
-      if (data.success && !data.already_confirmed) {
+      if (
+        data.success &&
+        !data.already_confirmed
+      ) {
         setAlreadyConfirmed(false);
 
         setConfirmedMatch({
@@ -254,13 +349,9 @@ function Matches({ lostItemId }) {
         return;
       }
 
-      // =========================================
-      // BACKEND ERROR
-      // =========================================
-
       alert(
         data.message ||
-        "Could not confirm this match."
+          "Could not confirm this match."
       );
     } catch (error) {
       console.error(
@@ -269,7 +360,8 @@ function Matches({ lostItemId }) {
       );
 
       alert(
-        "Could not confirm the match. Please try again."
+        error?.message ||
+          "Could not confirm the match."
       );
     } finally {
       setConfirming(false);
@@ -286,15 +378,9 @@ function Matches({ lostItemId }) {
         <h2>🤖 AI Matches</h2>
 
         <p>
-          Submit a lost item first to see possible matches.
+          Submit a lost item first to see
+          possible matches.
         </p>
-
-        <button
-          className="view-match-button"
-          onClick={() => window.location.reload()}
-        >
-          Go Back
-        </button>
       </div>
     );
   }
@@ -306,23 +392,18 @@ function Matches({ lostItemId }) {
   if (loading) {
     return (
       <div className="matches-container">
-
         <div className="matches-header">
-
           <div>
-            <h2>
-              🤖 AI Matches
-            </h2>
+            <h2>🤖 AI Matches</h2>
 
             <p>
-              Our AI is analyzing found items...
+              Our AI is analyzing found
+              items...
             </p>
           </div>
-
         </div>
 
         <div className="loading-card">
-
           <div className="loading-icon">
             🤖
           </div>
@@ -332,16 +413,15 @@ function Matches({ lostItemId }) {
           </h3>
 
           <p>
-            Comparing item names, descriptions,
-            locations and times.
+            Comparing item names,
+            descriptions, locations and
+            times.
           </p>
 
           <div className="loading-bar">
             <div className="loading-progress"></div>
           </div>
-
         </div>
-
       </div>
     );
   }
@@ -353,9 +433,7 @@ function Matches({ lostItemId }) {
   if (error) {
     return (
       <div className="matches-container">
-
         <div className="error-card">
-
           <div className="no-match-icon">
             ⚠️
           </div>
@@ -370,13 +448,13 @@ function Matches({ lostItemId }) {
 
           <button
             className="view-match-button"
-            onClick={() => window.location.reload()}
+            onClick={() =>
+              window.location.reload()
+            }
           >
             Try Again
           </button>
-
         </div>
-
       </div>
     );
   }
@@ -389,69 +467,48 @@ function Matches({ lostItemId }) {
     <>
       <div className="matches-container">
 
-        {/* =====================================
-            HEADER
-        ===================================== */}
-
         <div className="matches-header">
-
           <div>
-
             <h2>
               🤖 AI Matches
             </h2>
 
             <p>
-              Possible matches identified by our AI system.
+              Possible matches identified
+              by our AI system.
             </p>
-
           </div>
 
           <div className="match-count">
-
             {filteredMatches.length}{" "}
-
             {filteredMatches.length === 1
               ? "Match"
               : "Matches"}
-
           </div>
-
         </div>
 
-
-        {/* =====================================
-            SEARCH
-        ===================================== */}
-
         <div className="match-search">
-
           <input
             type="text"
             placeholder="🔍 Search matches..."
             value={searchTerm}
             onChange={(event) =>
-              setSearchTerm(event.target.value)
+              setSearchTerm(
+                event.target.value
+              )
             }
           />
-
         </div>
 
-
-        {/* =====================================
-            CONFIRMATION MESSAGE
-        ===================================== */}
-
         {confirmedMatch && (
-
           <div className="confirmed-match">
-
             <div className="confirmed-icon">
-              {alreadyConfirmed ? "ℹ️" : "✅"}
+              {alreadyConfirmed
+                ? "ℹ️"
+                : "✅"}
             </div>
 
             <div>
-
               <h3>
                 {alreadyConfirmed
                   ? "Match Already Confirmed"
@@ -459,47 +516,43 @@ function Matches({ lostItemId }) {
               </h3>
 
               <p>
-
                 {alreadyConfirmed
                   ? "This lost and found item pair has already been confirmed."
                   : (
                     <>
                       You selected{" "}
                       <strong>
-                        {confirmedMatch.item_name}
+                        {
+                          confirmedMatch.item_name
+                        }
                       </strong>{" "}
                       as your lost item.
                     </>
                   )}
-
               </p>
 
               {confirmedMatch.contact ? (
-
                 <p>
                   📞 Contact the finder at:{" "}
                   <strong>
                     {confirmedMatch.contact}
                   </strong>
                 </p>
-
               ) : (
-
                 <p>
-                  📞 Contact information was not provided.
+                  📞 Contact information was
+                  not provided.
                 </p>
-
               )}
 
               {confirmedMatch.confirmation_id && (
-
                 <p>
                   Confirmation ID: #
-                  {confirmedMatch.confirmation_id}
+                  {
+                    confirmedMatch.confirmation_id
+                  }
                 </p>
-
               )}
-
             </div>
 
             <button
@@ -510,20 +563,11 @@ function Matches({ lostItemId }) {
             >
               ×
             </button>
-
           </div>
-
         )}
 
-
-        {/* =====================================
-            NO MATCHES / NO SEARCH RESULTS
-        ===================================== */}
-
         {filteredMatches.length === 0 ? (
-
           <div className="no-matches">
-
             <div className="no-match-icon">
               🔍
             </div>
@@ -541,449 +585,346 @@ function Matches({ lostItemId }) {
             </p>
 
             {searchTerm.trim() && (
-
               <button
                 className="view-match-button"
-                onClick={() => setSearchTerm("")}
+                onClick={() =>
+                  setSearchTerm("")
+                }
               >
                 Clear Search
               </button>
-
             )}
-
           </div>
-
         ) : (
-
-          /* ===================================
-             MATCH LIST
-          =================================== */
-
           <div className="matches-list">
+            {filteredMatches.map(
+              (match, index) => {
+                const similarity =
+                  match.match_score ??
+                  match.similarity ??
+                  match.score ??
+                  match.similarity_score;
 
-            {filteredMatches.map((match, index) => {
+                const textScore =
+                  match.text_score ??
+                  match.text_similarity;
 
-              // =================================
-              // SCORES
-              // =================================
+                const locationScore =
+                  match.location_score ??
+                  match.location_similarity;
 
-              const similarity =
-                match.match_score ??
-                match.similarity ??
-                match.score ??
-                match.similarity_score;
+                const timeScore =
+                  match.time_score ??
+                  match.time_similarity;
 
-              const textScore =
-                match.text_score ??
-                match.text_similarity;
+                const itemNameScore =
+                  match.item_name_score ??
+                  match.item_name_similarity;
 
-              const locationScore =
-                match.location_score ??
-                match.location_similarity;
+                const itemName =
+                  match.item_name ||
+                  match.title ||
+                  match.name ||
+                  "Possible Match";
 
-              const timeScore =
-                match.time_score ??
-                match.time_similarity;
+                const description =
+                  match.description ||
+                  "No description available";
 
-              const itemNameScore =
-                match.item_name_score ??
-                match.item_name_similarity;
+                const matchLevel =
+                  getMatchLevel(match);
 
+                const matchLevelClass =
+                  getMatchLevelClass(
+                    matchLevel
+                  );
 
-              // =================================
-              // ITEM INFORMATION
-              // =================================
+                const foundItemId =
+                  match.found_item_id ??
+                  match.found_id ??
+                  match.item_id ??
+                  match.id;
 
-              const itemName =
-                match.item_name ||
-                match.title ||
-                match.name ||
-                "Possible Match";
-
-              const description =
-                match.description ||
-                "No description available";
-
-
-              // =================================
-              // MATCH LEVEL
-              // =================================
-
-              const matchLevel =
-                getMatchLevel(match);
-
-              const matchLevelClass =
-                getMatchLevelClass(matchLevel);
-
-
-              return (
-
-                <div
-                  className="match-card"
-                  key={
-                    match.found_item_id ??
-                    match.id ??
-                    index
-                  }
-                >
-
-                  {/* =============================
-                      MATCH TOP
-                  ============================= */}
-
-                  <div className="match-card-top">
-
-                    <div className="match-item-icon">
-                      👜
-                    </div>
-
-                    <div className="match-title">
-
-                      <span className="ai-label">
-                        AI MATCH
-                      </span>
-
-                      <h3>
-                        {itemName}
-                      </h3>
-
-                    </div>
-
-                    <div className="similarity-badge">
-
-                      <strong>
-                        {similarity !== undefined &&
-                        similarity !== null
-                          ? `${Number(similarity).toFixed(0)}%`
-                          : "N/A"}
-                      </strong>
-
-                      <span>
-                        Match
-                      </span>
-
-                    </div>
-
-                  </div>
-
-
-                  {/* =============================
-                      MATCH LEVEL
-                  ============================= */}
-
+                return (
                   <div
-                    className={`match-level-badge ${matchLevelClass}`}
+                    className="match-card"
+                    key={
+                      foundItemId ??
+                      index
+                    }
                   >
+                    <div className="match-card-top">
+                      <div className="match-item-icon">
+                        👜
+                      </div>
 
-                    {matchLevel === "Excellent Match" &&
-                      "🌟"}
-
-                    {matchLevel === "Good Match" &&
-                      "👍"}
-
-                    {matchLevel === "Possible Match" &&
-                      "🔍"}
-
-                    {" "}
-
-                    {matchLevel}
-
-                  </div>
-
-
-                  {/* =============================
-                      DESCRIPTION
-                  ============================= */}
-
-                  <div className="match-description">
-
-                    <p>
-                      {description}
-                    </p>
-
-                  </div>
-
-
-                  {/* =============================
-                      DETAILS
-                  ============================= */}
-
-                  <div className="match-details">
-
-                    {match.location && (
-
-                      <div className="detail">
-
-                        <span>
-                          📍
+                      <div className="match-title">
+                        <span className="ai-label">
+                          AI MATCH
                         </span>
 
-                        <div>
-
-                          <small>
-                            Location
-                          </small>
-
-                          <strong>
-                            {match.location}
-                          </strong>
-
-                        </div>
-
+                        <h3>
+                          {itemName}
+                        </h3>
                       </div>
 
-                    )}
-
-
-                    {match.date && (
-
-                      <div className="detail">
+                      <div className="similarity-badge">
+                        <strong>
+                          {similarity !==
+                            undefined &&
+                          similarity !==
+                            null
+                            ? `${Number(
+                                similarity
+                              ).toFixed(0)}%`
+                            : "N/A"}
+                        </strong>
 
                         <span>
-                          📅
+                          Match
                         </span>
-
-                        <div>
-
-                          <small>
-                            Date
-                          </small>
-
-                          <strong>
-                            {match.date}
-                          </strong>
-
-                        </div>
-
                       </div>
-
-                    )}
-
-
-                    {match.time && (
-
-                      <div className="detail">
-
-                        <span>
-                          🕐
-                        </span>
-
-                        <div>
-
-                          <small>
-                            Time
-                          </small>
-
-                          <strong>
-                            {match.time}
-                          </strong>
-
-                        </div>
-
-                      </div>
-
-                    )}
-
-                  </div>
-
-
-                  {/* =============================
-                      AI ANALYSIS
-                  ============================= */}
-
-                  <div className="ai-analysis">
-
-                    <h4>
-                      AI Analysis
-                    </h4>
-
-
-                    {/* ITEM NAME */}
-
-                    <div className="score-row">
-
-                      <span>
-                        Item name similarity
-                      </span>
-
-                      <div className="score-bar">
-
-                        <div
-                          className="score-fill"
-                          style={{
-                            width: `${Math.min(
-                              Number(itemNameScore) || 0,
-                              100
-                            )}%`,
-                          }}
-                        />
-
-                      </div>
-
-                      <strong>
-
-                        {itemNameScore !== undefined &&
-                        itemNameScore !== null
-                          ? `${Number(
-                              itemNameScore
-                            ).toFixed(0)}%`
-                          : "N/A"}
-
-                      </strong>
-
                     </div>
 
-
-                    {/* TEXT */}
-
-                    <div className="score-row">
-
-                      <span>
-                        Text similarity
-                      </span>
-
-                      <div className="score-bar">
-
-                        <div
-                          className="score-fill"
-                          style={{
-                            width: `${Math.min(
-                              Number(textScore) || 0,
-                              100
-                            )}%`,
-                          }}
-                        />
-
-                      </div>
-
-                      <strong>
-
-                        {textScore !== undefined &&
-                        textScore !== null
-                          ? `${Number(
-                              textScore
-                            ).toFixed(0)}%`
-                          : "N/A"}
-
-                      </strong>
-
-                    </div>
-
-
-                    {/* LOCATION */}
-
-                    <div className="score-row">
-
-                      <span>
-                        Location similarity
-                      </span>
-
-                      <div className="score-bar">
-
-                        <div
-                          className="score-fill"
-                          style={{
-                            width: `${Math.min(
-                              Number(locationScore) || 0,
-                              100
-                            )}%`,
-                          }}
-                        />
-
-                      </div>
-
-                      <strong>
-
-                        {locationScore !== undefined &&
-                        locationScore !== null
-                          ? `${Number(
-                              locationScore
-                            ).toFixed(0)}%`
-                          : "N/A"}
-
-                      </strong>
-
-                    </div>
-
-
-                    {/* TIME */}
-
-                    <div className="score-row">
-
-                      <span>
-                        Time similarity
-                      </span>
-
-                      <div className="score-bar">
-
-                        <div
-                          className="score-fill"
-                          style={{
-                            width: `${Math.min(
-                              Number(timeScore) || 0,
-                              100
-                            )}%`,
-                          }}
-                        />
-
-                      </div>
-
-                      <strong>
-
-                        {timeScore !== undefined &&
-                        timeScore !== null
-                          ? `${Number(
-                              timeScore
-                            ).toFixed(0)}%`
-                          : "N/A"}
-
-                      </strong>
-
-                    </div>
-
-                  </div>
-
-
-                  {/* =============================
-                      FOOTER
-                  ============================= */}
-
-                  <div className="match-footer">
-
-                    <span>
-                      🤖 Generated using AI similarity
-                      analysis
-                    </span>
-
-                    <button
-                      className="view-match-button"
-                      onClick={() =>
-                        setSelectedMatch(match)
-                      }
+                    <div
+                      className={`match-level-badge ${matchLevelClass}`}
                     >
-                      View Match
-                    </button>
+                      {matchLevel ===
+                        "Excellent Match" &&
+                        "🌟"}
 
+                      {matchLevel ===
+                        "Good Match" &&
+                        "👍"}
+
+                      {matchLevel ===
+                        "Possible Match" &&
+                        "🔍"}
+
+                      {" "}
+                      {matchLevel}
+                    </div>
+
+                    <div className="match-description">
+                      <p>
+                        {description}
+                      </p>
+                    </div>
+
+                    <div className="match-details">
+                      {match.location && (
+                        <div className="detail">
+                          <span>
+                            📍
+                          </span>
+
+                          <div>
+                            <small>
+                              Location
+                            </small>
+
+                            <strong>
+                              {
+                                match.location
+                              }
+                            </strong>
+                          </div>
+                        </div>
+                      )}
+
+                      {match.date && (
+                        <div className="detail">
+                          <span>
+                            📅
+                          </span>
+
+                          <div>
+                            <small>
+                              Date
+                            </small>
+
+                            <strong>
+                              {match.date}
+                            </strong>
+                          </div>
+                        </div>
+                      )}
+
+                      {match.time && (
+                        <div className="detail">
+                          <span>
+                            🕐
+                          </span>
+
+                          <div>
+                            <small>
+                              Time
+                            </small>
+
+                            <strong>
+                              {match.time}
+                            </strong>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="ai-analysis">
+                      <h4>
+                        AI Analysis
+                      </h4>
+
+                      <div className="score-row">
+                        <span>
+                          Item name similarity
+                        </span>
+
+                        <div className="score-bar">
+                          <div
+                            className="score-fill"
+                            style={{
+                              width: `${Math.min(
+                                Number(
+                                  itemNameScore
+                                ) || 0,
+                                100
+                              )}%`,
+                            }}
+                          />
+                        </div>
+
+                        <strong>
+                          {itemNameScore !==
+                            undefined &&
+                          itemNameScore !==
+                            null
+                            ? `${Number(
+                                itemNameScore
+                              ).toFixed(0)}%`
+                            : "N/A"}
+                        </strong>
+                      </div>
+
+                      <div className="score-row">
+                        <span>
+                          Text similarity
+                        </span>
+
+                        <div className="score-bar">
+                          <div
+                            className="score-fill"
+                            style={{
+                              width: `${Math.min(
+                                Number(
+                                  textScore
+                                ) || 0,
+                                100
+                              )}%`,
+                            }}
+                          />
+                        </div>
+
+                        <strong>
+                          {textScore !==
+                            undefined &&
+                          textScore !==
+                            null
+                            ? `${Number(
+                                textScore
+                              ).toFixed(0)}%`
+                            : "N/A"}
+                        </strong>
+                      </div>
+
+                      <div className="score-row">
+                        <span>
+                          Location similarity
+                        </span>
+
+                        <div className="score-bar">
+                          <div
+                            className="score-fill"
+                            style={{
+                              width: `${Math.min(
+                                Number(
+                                  locationScore
+                                ) || 0,
+                                100
+                              )}%`,
+                            }}
+                          />
+                        </div>
+
+                        <strong>
+                          {locationScore !==
+                            undefined &&
+                          locationScore !==
+                            null
+                            ? `${Number(
+                                locationScore
+                              ).toFixed(0)}%`
+                            : "N/A"}
+                        </strong>
+                      </div>
+
+                      <div className="score-row">
+                        <span>
+                          Time similarity
+                        </span>
+
+                        <div className="score-bar">
+                          <div
+                            className="score-fill"
+                            style={{
+                              width: `${Math.min(
+                                Number(
+                                  timeScore
+                                ) || 0,
+                                100
+                              )}%`,
+                            }}
+                          />
+                        </div>
+
+                        <strong>
+                          {timeScore !==
+                            undefined &&
+                          timeScore !==
+                            null
+                            ? `${Number(
+                                timeScore
+                              ).toFixed(0)}%`
+                            : "N/A"}
+                        </strong>
+                      </div>
+                    </div>
+
+                    <div className="match-footer">
+                      <span>
+                        🤖 Generated using AI
+                        similarity analysis
+                      </span>
+
+                      <button
+                        className="view-match-button"
+                        onClick={() =>
+                          setSelectedMatch(
+                            match
+                          )
+                        }
+                      >
+                        View Match
+                      </button>
+                    </div>
                   </div>
-
-                </div>
-
-              );
-            })}
-
+                );
+              }
+            )}
           </div>
-
         )}
-
       </div>
 
-
-      {/* =========================================
-          MATCH DETAILS MODAL
-      ========================================= */}
-
       {selectedMatch && (
-
         <div
           className="modal-overlay"
           onClick={() =>
@@ -991,16 +932,12 @@ function Matches({ lostItemId }) {
             setSelectedMatch(null)
           }
         >
-
           <div
             className="match-modal"
             onClick={(event) =>
               event.stopPropagation()
             }
           >
-
-            {/* CLOSE */}
-
             <button
               className="modal-close"
               onClick={() =>
@@ -1012,106 +949,80 @@ function Matches({ lostItemId }) {
               ×
             </button>
 
-
-            {/* ICON */}
-
             <div className="modal-icon">
               👜
             </div>
-
-
-            {/* LABEL */}
 
             <span className="ai-label">
               AI MATCH
             </span>
 
-
-            {/* ITEM NAME */}
-
             <h2>
-
               {selectedMatch.item_name ||
                 selectedMatch.title ||
                 selectedMatch.name ||
                 "Possible Match"}
-
             </h2>
-
-
-            {/* MATCH LEVEL */}
 
             <div
               className={`match-level-badge ${getMatchLevelClass(
-                getMatchLevel(selectedMatch)
+                getMatchLevel(
+                  selectedMatch
+                )
               )}`}
             >
+              {getMatchLevel(
+                selectedMatch
+              ) === "Excellent Match" &&
+                "🌟"}
 
-              {getMatchLevel(selectedMatch) ===
-                "Excellent Match" && "🌟"}
+              {getMatchLevel(
+                selectedMatch
+              ) === "Good Match" &&
+                "👍"}
 
-              {getMatchLevel(selectedMatch) ===
-                "Good Match" && "👍"}
-
-              {getMatchLevel(selectedMatch) ===
-                "Possible Match" && "🔍"}
+              {getMatchLevel(
+                selectedMatch
+              ) === "Possible Match" &&
+                "🔍"}
 
               {" "}
-
-              {getMatchLevel(selectedMatch)}
-
+              {getMatchLevel(
+                selectedMatch
+              )}
             </div>
 
-
-            {/* MATCH SCORE */}
-
             <div className="modal-score">
-
               <strong>
-
                 {selectedMatch.match_score !==
                   undefined &&
-                selectedMatch.match_score !== null
+                selectedMatch.match_score !==
+                  null
                   ? `${Number(
                       selectedMatch.match_score
                     ).toFixed(0)}%`
                   : "N/A"}
-
               </strong>
 
               <span>
                 AI Match Confidence
               </span>
-
             </div>
 
-
-            {/* DESCRIPTION */}
-
             <div className="modal-section">
-
               <h4>
                 Description
               </h4>
 
               <p>
-
                 {selectedMatch.description ||
                   "No description available"}
-
               </p>
-
             </div>
 
-
-            {/* ITEM INFORMATION */}
-
             <div className="modal-info-grid">
-
               {selectedMatch.location && (
-
                 <div>
-
                   <span>
                     📍
                   </span>
@@ -1123,16 +1034,11 @@ function Matches({ lostItemId }) {
                   <strong>
                     {selectedMatch.location}
                   </strong>
-
                 </div>
-
               )}
 
-
               {selectedMatch.date && (
-
                 <div>
-
                   <span>
                     📅
                   </span>
@@ -1144,16 +1050,11 @@ function Matches({ lostItemId }) {
                   <strong>
                     {selectedMatch.date}
                   </strong>
-
                 </div>
-
               )}
 
-
               {selectedMatch.time && (
-
                 <div>
-
                   <span>
                     🕐
                   </span>
@@ -1165,90 +1066,68 @@ function Matches({ lostItemId }) {
                   <strong>
                     {selectedMatch.time}
                   </strong>
-
                 </div>
-
               )}
-
             </div>
 
-
-            {/* CONTACT */}
-
             <div className="modal-section">
-
               <h4>
                 📞 Contact Finder
               </h4>
 
               {selectedMatch.contact ? (
-
                 <div className="contact-box">
-
                   <p>
-                    The person who reported this item
-                    can be contacted at:
+                    The person who reported
+                    this item can be contacted
+                    at:
                   </p>
 
                   <strong>
-                    📞 {selectedMatch.contact}
+                    📞{" "}
+                    {
+                      selectedMatch.contact
+                    }
                   </strong>
-
                 </div>
-
               ) : (
-
                 <p>
-                  Contact information was not provided
-                  for this found item.
+                  Contact information was
+                  not provided for this found
+                  item.
                 </p>
-
               )}
-
             </div>
 
-
-            {/* AI ANALYSIS */}
-
             <div className="modal-section">
-
               <h4>
                 AI Analysis
               </h4>
 
               <p>
-                This match was generated by comparing
-                the item name, description, location
-                and time of the lost and found items.
+                This match was generated by
+                comparing the item name,
+                description, location and
+                time of the lost and found
+                items.
               </p>
-
             </div>
-
-
-            {/* CONFIRM BUTTON */}
 
             <button
               className="confirm-match-button"
               disabled={confirming}
               onClick={async () => {
-
                 await handleConfirmMatch(
                   selectedMatch
                 );
 
                 setSelectedMatch(null);
-
               }}
             >
-
               {confirming
                 ? "⏳ Confirming..."
                 : "✅ This is My Item"}
-
             </button>
-
-
-            {/* CLOSE BUTTON */}
 
             <button
               className="modal-done-button"
@@ -1259,13 +1138,9 @@ function Matches({ lostItemId }) {
             >
               Close
             </button>
-
           </div>
-
         </div>
-
       )}
-
     </>
   );
 }
