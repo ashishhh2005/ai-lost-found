@@ -6,16 +6,20 @@ import ReportFound from "./pages/ReportFound";
 import Matches from "./pages/Matches";
 import ConfirmedMatches from "./pages/ConfirmedMatches";
 
-function App() {
+// =========================================
+// PRODUCTION BACKEND URL
+// =========================================
 
+const API_URL =
+  "https://ai-lost-found-bamz.onrender.com";
+
+function App() {
   // =========================================
   // LOST ITEM ID
   // =========================================
 
   const [lostItemId, setLostItemId] = useState(() => {
-
-    const savedId =
-      localStorage.getItem("lostItemId");
+    const savedId = localStorage.getItem("lostItemId");
 
     if (!savedId) {
       return null;
@@ -23,11 +27,8 @@ function App() {
 
     const id = Number(savedId);
 
-    return Number.isNaN(id)
-      ? null
-      : id;
+    return Number.isNaN(id) ? null : id;
   });
-
 
   // =========================================
   // CURRENT PAGE
@@ -35,17 +36,14 @@ function App() {
 
   const [page, setPage] = useState("home");
 
-
   // =========================================
   // RECOVER LOST ITEM FROM BACKEND
   // =========================================
 
   const recoverLostItem = async () => {
-
     try {
-
       const response = await fetch(
-        "http://127.0.0.1:8000/lost-items/latest"
+        `${API_URL}/lost-items/latest`
       );
 
       if (!response.ok) {
@@ -59,7 +57,6 @@ function App() {
         data.item &&
         data.item.id
       ) {
-
         const id = Number(data.item.id);
 
         setLostItemId(id);
@@ -71,9 +68,7 @@ function App() {
 
         return id;
       }
-
     } catch (error) {
-
       console.error(
         "Could not recover lost item:",
         error
@@ -83,31 +78,24 @@ function App() {
     return null;
   };
 
-
   // =========================================
   // AUTOMATICALLY RECOVER ID WHEN APP LOADS
   // =========================================
 
   useEffect(() => {
-
     const savedId =
       localStorage.getItem("lostItemId");
 
     if (!savedId) {
-
       recoverLostItem();
-
     }
-
   }, []);
-
 
   // =========================================
   // LOST ITEM SUBMITTED
   // =========================================
 
   const handleLostItemSubmitted = (id) => {
-
     const numericId = Number(id);
 
     console.log(
@@ -122,80 +110,58 @@ function App() {
       String(numericId)
     );
 
-    // Open AI Matches automatically
     setPage("matches");
   };
-
 
   // =========================================
   // START NEW LOST REPORT
   // =========================================
 
   const startNewLostReport = () => {
-
     localStorage.removeItem(
       "lostItemId"
     );
 
     setLostItemId(null);
-
     setPage("lost");
   };
-
 
   // =========================================
   // OPEN AI MATCHES
   // =========================================
 
   const openMatches = async () => {
-
-    // If ID already exists
     if (lostItemId) {
-
       setPage("matches");
-
       return;
     }
 
-
-    // Try to recover latest item
     const recoveredId =
       await recoverLostItem();
 
-
     if (recoveredId) {
-
       setPage("matches");
-
       return;
     }
 
-
-    // No lost item exists
     setPage("lost");
   };
-
 
   // =========================================
   // NAVIGATION
   // =========================================
 
   const goToPage = (nextPage) => {
-
     if (nextPage === "matches") {
-
       openMatches();
-
       return;
     }
 
     setPage(nextPage);
   };
 
-
   return (
     <div className="app">
-
 
       {/* =====================================
           NAVBAR
@@ -203,91 +169,97 @@ function App() {
 
       <nav className="navbar">
 
-        <h1>
-          AI Lost & Found
-        </h1>
-
-
-        <div className="nav-buttons">
+        <div className="navbar-inner">
 
           <button
+            className="brand"
             onClick={() =>
               goToPage("home")
             }
-            className={
-              page === "home"
-                ? "active"
-                : ""
-            }
           >
-            Home
+            <span className="brand-icon">
+              🔎
+            </span>
+
+            <span>
+              AI Lost & Found
+            </span>
           </button>
 
+          <div className="nav-buttons">
 
-          <button
-            onClick={
-              startNewLostReport
-            }
-            className={
-              page === "lost"
-                ? "active"
-                : ""
-            }
-          >
-            Report Lost
-          </button>
+            <button
+              onClick={() =>
+                goToPage("home")
+              }
+              className={
+                page === "home"
+                  ? "active"
+                  : ""
+              }
+            >
+              Home
+            </button>
 
+            <button
+              onClick={startNewLostReport}
+              className={
+                page === "lost"
+                  ? "active"
+                  : ""
+              }
+            >
+              Report Lost
+            </button>
 
-          <button
-            onClick={() =>
-              goToPage("found")
-            }
-            className={
-              page === "found"
-                ? "active"
-                : ""
-            }
-          >
-            Report Found
-          </button>
+            <button
+              onClick={() =>
+                goToPage("found")
+              }
+              className={
+                page === "found"
+                  ? "active"
+                  : ""
+              }
+            >
+              Report Found
+            </button>
 
+            <button
+              onClick={openMatches}
+              className={
+                page === "matches"
+                  ? "active"
+                  : ""
+              }
+            >
+              AI Matches
+            </button>
 
-          <button
-            onClick={openMatches}
-            className={
-              page === "matches"
-                ? "active"
-                : ""
-            }
-          >
-            AI Matches
-          </button>
+            <button
+              onClick={() =>
+                goToPage("confirmed")
+              }
+              className={
+                page === "confirmed"
+                  ? "active"
+                  : ""
+              }
+            >
+              Confirmed
+            </button>
 
-
-          <button
-            onClick={() =>
-              goToPage("confirmed")
-            }
-            className={
-              page === "confirmed"
-                ? "active"
-                : ""
-            }
-          >
-            Confirmed Matches
-          </button>
+          </div>
 
         </div>
 
       </nav>
-
 
       {/* =====================================
           MAIN CONTENT
       ===================================== */}
 
       <main className="main-content">
-
 
         {/* ===================================
             HOME
@@ -297,166 +269,217 @@ function App() {
 
           <div className="home-page">
 
-            <h2>
-              AI Lost & Found System
-            </h2>
+            {/* HERO */}
 
+            <section className="hero-section">
 
-            <p>
-              Find your lost belongings using
-              AI-powered matching.
-            </p>
+              <div className="hero-badge">
+                <span>✦</span>
+                AI-Powered Lost & Found
+              </div>
 
+              <h2>
+                Find What You Lost,
+                <br />
+                <span>Faster With AI.</span>
+              </h2>
 
-            <div className="home-buttons">
+              <p className="hero-description">
+                Report a lost item and let our AI
+                compare it with found items using
+                descriptions, locations and timing.
+              </p>
 
-              <button
-                onClick={
-                  startNewLostReport
-                }
-              >
-                🔍 Report Lost Item
-              </button>
+              <div className="home-buttons">
 
+                <button
+                  className="primary-home-button"
+                  onClick={startNewLostReport}
+                >
+                  <span>🔍</span>
+                  Report Lost Item
+                </button>
 
-              <button
-                onClick={() =>
-                  goToPage("found")
-                }
-              >
-                📦 Report Found Item
-              </button>
+                <button
+                  className="secondary-home-button"
+                  onClick={() =>
+                    goToPage("found")
+                  }
+                >
+                  <span>📦</span>
+                  Report Found Item
+                </button>
 
-            </div>
+              </div>
 
+            </section>
+
+            {/* EXISTING LOST ITEM */}
 
             {lostItemId && (
 
-              <div className="existing-match-section">
+              <section className="existing-match-section">
 
-                <p>
-                  You already have a lost item
-                  report.
-                  <br />
-                  <strong>
-                    Lost Item ID: {lostItemId}
-                  </strong>
-                </p>
+                <div className="existing-match-content">
 
+                  <div className="existing-match-icon">
+                    🤖
+                  </div>
+
+                  <div>
+                    <h3>
+                      Your AI matching is ready
+                    </h3>
+
+                    <p>
+                      Lost Item ID:{" "}
+                      <strong>
+                        #{lostItemId}
+                      </strong>
+                    </p>
+                  </div>
+
+                </div>
 
                 <button
                   onClick={openMatches}
                   className="matches-button"
                 >
-                  🤖 View AI Matches
+                  View AI Matches
+                  <span>→</span>
                 </button>
 
-              </div>
+              </section>
 
             )}
-
 
             {!lostItemId && (
 
-              <div className="existing-match-section">
+              <section className="activation-card">
 
-                <p>
-                  Report a lost item to activate
-                  AI-powered matching.
-                </p>
+                <div className="activation-icon">
+                  ✨
+                </div>
 
+                <div>
+                  <h3>
+                    Ready to find your item?
+                  </h3>
 
-                <button
-                  onClick={
-                    startNewLostReport
-                  }
-                  className="matches-button"
-                >
-                  🔍 Report Lost Item
-                </button>
+                  <p>
+                    Submit a lost item to activate
+                    AI-powered matching.
+                  </p>
+                </div>
 
-              </div>
+              </section>
 
             )}
 
+            {/* HOW IT WORKS */}
 
             <section className="how-it-works">
 
-              <h3>
-                How AI Lost & Found Works
-              </h3>
+              <div className="section-heading">
 
+                <span className="section-label">
+                  SIMPLE PROCESS
+                </span>
+
+                <h3>
+                  How AI Lost & Found Works
+                </h3>
+
+                <p>
+                  Four simple steps from reporting
+                  to recovering your belongings.
+                </p>
+
+              </div>
 
               <div className="steps">
 
                 <div className="step-card">
 
-                  <div className="step-number">
-                    1
+                  <div className="step-icon">
+                    📝
                   </div>
 
-                  <h4>
-                    Report
-                  </h4>
+                  <div className="step-content">
 
-                  <p>
-                    Report your lost or found
-                    item with its details.
-                  </p>
+                    <h4>
+                      Report
+                    </h4>
+
+                    <p>
+                      Submit details about your
+                      lost or found item.
+                    </p>
+
+                  </div>
 
                 </div>
 
-
                 <div className="step-card">
 
-                  <div className="step-number">
-                    2
+                  <div className="step-icon">
+                    🤖
                   </div>
 
-                  <h4>
-                    AI Matching
-                  </h4>
+                  <div className="step-content">
 
-                  <p>
-                    AI compares item name,
-                    description, location and time.
-                  </p>
+                    <h4>
+                      AI Matching
+                    </h4>
+
+                    <p>
+                      AI compares descriptions,
+                      locations and times.
+                    </p>
+
+                  </div>
 
                 </div>
 
-
                 <div className="step-card">
 
-                  <div className="step-number">
-                    3
+                  <div className="step-icon">
+                    🎯
                   </div>
 
-                  <h4>
-                    Confirm
-                  </h4>
+                  <div className="step-content">
 
-                  <p>
-                    Review the match and confirm
-                    the correct item.
-                  </p>
+                    <h4>
+                      Confirm
+                    </h4>
+
+                    <p>
+                      Review the best match and
+                      confirm your item.
+                    </p>
+
+                  </div>
 
                 </div>
 
-
                 <div className="step-card">
 
-                  <div className="step-number">
-                    4
+                  <div className="step-icon">
+                    🤝
                   </div>
 
-                  <h4>
-                    Return
-                  </h4>
+                  <div className="step-content">
 
-                  <p>
-                    Contact the finder and mark
-                    the item as returned.
-                  </p>
+                    <h4>
+                      Return
+                    </h4>
+
+                    <p>
+                      Contact the finder and
+                      arrange the return.
+                    </p>
+
+                  </div>
 
                 </div>
 
@@ -464,10 +487,57 @@ function App() {
 
             </section>
 
+            {/* AI FEATURES */}
+
+            <section className="features-section">
+
+              <div className="feature-item">
+                <span>🧠</span>
+
+                <div>
+                  <strong>
+                    Smart Matching
+                  </strong>
+
+                  <p>
+                    AI-powered similarity analysis
+                  </p>
+                </div>
+              </div>
+
+              <div className="feature-item">
+                <span>📍</span>
+
+                <div>
+                  <strong>
+                    Location Analysis
+                  </strong>
+
+                  <p>
+                    Compare where items were reported
+                  </p>
+                </div>
+              </div>
+
+              <div className="feature-item">
+                <span>⏱️</span>
+
+                <div>
+                  <strong>
+                    Time Comparison
+                  </strong>
+
+                  <p>
+                    Analyze when items were reported
+                  </p>
+                </div>
+              </div>
+
+            </section>
+
           </div>
 
         )}
-
 
         {/* ===================================
             REPORT LOST
@@ -483,7 +553,6 @@ function App() {
 
         )}
 
-
         {/* ===================================
             REPORT FOUND
         =================================== */}
@@ -493,7 +562,6 @@ function App() {
           <ReportFound />
 
         )}
-
 
         {/* ===================================
             AI MATCHES
@@ -521,9 +589,7 @@ function App() {
               </p>
 
               <button
-                onClick={
-                  startNewLostReport
-                }
+                onClick={startNewLostReport}
               >
                 🔍 Report Lost Item
               </button>
@@ -533,7 +599,6 @@ function App() {
           )
 
         )}
-
 
         {/* ===================================
             CONFIRMED MATCHES
