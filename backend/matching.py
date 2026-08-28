@@ -4,12 +4,25 @@ from datetime import datetime
 
 
 # =========================================
-# LOAD AI MODEL
+# AI MODEL
 # =========================================
 
-model = SentenceTransformer("all-MiniLM-L6-v2")
+# IMPORTANT:
+# The model is NOT loaded when the server starts.
+# It will be loaded only when AI matching is needed.
 
-print("AI model loaded successfully!")
+model = None
+
+
+def get_model():
+    global model
+
+    if model is None:
+        print("Loading AI model...")
+        model = SentenceTransformer("all-MiniLM-L6-v2")
+        print("AI model loaded successfully!")
+
+    return model
 
 
 # =========================================
@@ -27,14 +40,23 @@ def calculate_text_similarity(text1, text2):
     if not text1 or not text2:
         return 0.0
 
-    embeddings = model.encode([text1, text2])
+    ai_model = get_model()
+
+    embeddings = ai_model.encode(
+        [text1, text2]
+    )
 
     similarity = cosine_similarity(
         [embeddings[0]],
         [embeddings[1]]
     )[0][0]
 
-    return float(max(0.0, min(1.0, similarity)))
+    return float(
+        max(
+            0.0,
+            min(1.0, similarity)
+        )
+    )
 
 
 # =========================================
@@ -66,7 +88,10 @@ def calculate_item_name_similarity(item1, item2):
 # LOCATION SIMILARITY
 # =========================================
 
-def calculate_location_similarity(location1, location2):
+def calculate_location_similarity(
+    location1,
+    location2
+):
 
     if not location1 or not location2:
         return 0.0
@@ -89,7 +114,9 @@ def calculate_location_similarity(location1, location2):
         intersection = words1.intersection(words2)
         union = words1.union(words2)
 
-        word_similarity = len(intersection) / len(union)
+        word_similarity = (
+            len(intersection) / len(union)
+        )
 
     else:
 
@@ -107,7 +134,10 @@ def calculate_location_similarity(location1, location2):
     )
 
     return float(
-        max(0.0, min(1.0, score))
+        max(
+            0.0,
+            min(1.0, score)
+        )
     )
 
 
@@ -115,7 +145,10 @@ def calculate_location_similarity(location1, location2):
 # TIME PARSER
 # =========================================
 
-def parse_datetime(date_value, time_value):
+def parse_datetime(
+    date_value,
+    time_value
+):
 
     if not date_value or not time_value:
         return None
@@ -130,12 +163,14 @@ def parse_datetime(date_value, time_value):
     if len(time_string) >= 8:
 
         try:
+
             time_string = datetime.strptime(
                 time_string,
                 "%H:%M:%S"
             ).strftime("%H:%M")
 
         except ValueError:
+
             pass
 
     # -----------------------------------------
@@ -194,6 +229,7 @@ def calculate_time_similarity(
     # -----------------------------------------
 
     if datetime1 is None or datetime2 is None:
+
         print(
             "Time parsing failed:",
             date1,
@@ -209,46 +245,43 @@ def calculate_time_similarity(
     # -----------------------------------------
 
     difference = abs(
-        (datetime1 - datetime2).total_seconds()
+        (
+            datetime1 - datetime2
+        ).total_seconds()
     )
 
-    hours_difference = difference / 3600
+    hours_difference = (
+        difference / 3600
+    )
 
     # -----------------------------------------
     # Time scoring
     # -----------------------------------------
 
-    # Same time / within 1 hour
     if hours_difference <= 1:
 
         return 1.0
 
-    # Within 6 hours
     elif hours_difference <= 6:
 
         return 0.9
 
-    # Within 12 hours
     elif hours_difference <= 12:
 
         return 0.75
 
-    # Within 1 day
     elif hours_difference <= 24:
 
         return 0.6
 
-    # Within 2 days
     elif hours_difference <= 48:
 
         return 0.4
 
-    # Within 7 days
     elif hours_difference <= 168:
 
         return 0.2
 
-    # More than 7 days
     else:
 
         return 0.0
@@ -293,8 +326,12 @@ def calculate_final_score(
         +
 
         time_score * time_weight
+
     )
 
     return float(
-        max(0.0, min(1.0, final_score))
+        max(
+            0.0,
+            min(1.0, final_score)
+        )
     )
