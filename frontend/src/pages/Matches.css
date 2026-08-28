@@ -1,0 +1,36 @@
+.matches-page {
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 20px;
+}
+
+.matches-container h1 {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.matches-message {
+  text-align: center;
+  margin: 20px 0;
+}
+
+.match-card {
+  padding: 25px;
+  margin-bottom: 20px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+}
+
+.match-card h2 {
+  margin-top: 0;
+}
+
+.scores {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #ddd;
+}
+
+.scores h3 {
+  font-size: 22px;
+}

@@ -1,0 +1,91 @@
+.report-page {
+  min-height: calc(100vh - 80px);
+  background: #f5f7fb;
+  padding: 60px 20px;
+  box-sizing: border-box;
+}
+
+.report-container {
+  width: 100%;
+  max-width: 650px;
+  margin: 0 auto;
+  background: white;
+  padding: 40px;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  box-sizing: border-box;
+}
+
+.report-container h1 {
+  margin: 0 0 10px;
+  text-align: center;
+  font-size: 36px;
+  color: #111827;
+}
+
+.report-container > p {
+  text-align: center;
+  color: #6b7280;
+  margin-bottom: 30px;
+}
+
+.report-container form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.report-container label {
+  font-size: 15px;
+  font-weight: 600;
+  color: #374151;
+  margin-top: 8px;
+}
+
+.report-container input,
+.report-container textarea {
+  width: 100%;
+  padding: 13px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 15px;
+  font-family: inherit;
+  box-sizing: border-box;
+  background: white;
+  color: #111827;
+}
+
+.report-container textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.report-container input:focus,
+.report-container textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.report-container button {
+  margin-top: 20px;
+  padding: 14px;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.report-container button:hover {
+  background: #1d4ed8;
+}
+
+.form-message {
+  margin-top: 20px;
+  text-align: center;
+  font-weight: 600;
+  color: #16a34a;
+}
