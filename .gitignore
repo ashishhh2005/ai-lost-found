@@ -1,0 +1,11 @@
+.venv/
+.venv-1/
+__pycache__/
+*.pyc
+
+lost_found.db
+
+frontend/node_modules/
+frontend/dist/
+
+.env
