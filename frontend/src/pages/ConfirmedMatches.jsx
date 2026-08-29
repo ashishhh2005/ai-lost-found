@@ -1,460 +1,750 @@
+
 import { useEffect, useState } from "react";
+import "./Matches.css";
 
 const API_URL = "https://ai-lost-found-bamz.onrender.com";
 
 function ConfirmedMatches() {
-const [confirmedMatches, setConfirmedMatches] = useState([]);
-const [loading, setLoading] = useState(true);
-const [error, setError] = useState("");
-const [updatingId, setUpdatingId] = useState(null);
+  const [confirmedMatches, setConfirmedMatches] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [updatingId, setUpdatingId] = useState(null);
 
-const fetchConfirmedMatches = async () => {
-try {
-setLoading(true);
-setError("");
+  const fetchConfirmedMatches = async () => {
+    try {
+      setLoading(true);
+      setError("");
 
-  const response = await fetch(
-    `${API_URL}/confirmed-matches`
-  );
+      const response = await fetch(
+        `${API_URL}/confirmed-matches`
+      );
 
-  if (!response.ok) {
-    throw new Error(
-      `Server error: ${response.status}`
-    );
-  }
+      const responseText = await response.text();
 
-  const data = await response.json();
+      if (!response.ok) {
+        throw new Error(
+          `Server error ${response.status}: ${responseText}`
+        );
+      }
 
-  if (
-    data.success &&
-    Array.isArray(data.confirmed_matches)
-  ) {
-    setConfirmedMatches(
-      data.confirmed_matches
-    );
-  } else {
-    setConfirmedMatches([]);
-  }
-} catch (err) {
-  console.error(
-    "Confirmed matches error:",
-    err
-  );
+      let data;
 
-  setError(
-    "Could not load confirmed matches."
-  );
-} finally {
-  setLoading(false);
-}
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        throw new Error("Backend returned invalid JSON.");
+      }
 
+      if (
+        data.success &&
+        Array.isArray(data.confirmed_matches)
+      ) {
+        setConfirmedMatches(data.confirmed_matches);
+      } else {
+        setConfirmedMatches([]);
+      }
+    } catch (err) {
+      console.error("Confirmed matches error:", err);
 
-};
-
-useEffect(() => {
-fetchConfirmedMatches();
-}, []);
-
-const handleStatusChange = async (
-confirmationId,
-newStatus
-) => {
-if (!confirmationId || !newStatus) {
-return;
-}
-
-
-try {
-  setUpdatingId(confirmationId);
-
-  const response = await fetch(
-    `${API_URL}/confirmed-matches/${confirmationId}/status`,
-    {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        status: newStatus,
-      }),
+      setError(
+        err?.message ||
+          "Could not load confirmed matches."
+      );
+    } finally {
+      setLoading(false);
     }
-  );
+  };
 
-  if (!response.ok) {
-    throw new Error(
-      `Server error: ${response.status}`
+  useEffect(() => {
+    fetchConfirmedMatches();
+  }, []);
+
+  const handleStatusChange = async (
+    confirmationId,
+    newStatus
+  ) => {
+    if (!confirmationId || !newStatus) {
+      return;
+    }
+
+    try {
+      setUpdatingId(confirmationId);
+
+      const response = await fetch(
+        `${API_URL}/confirmed-matches/${confirmationId}/status`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            status: newStatus,
+          }),
+        }
+      );
+
+      const responseText = await response.text();
+
+      if (!response.ok) {
+        throw new Error(
+          `Server error ${response.status}: ${responseText}`
+        );
+      }
+
+      let data;
+
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        throw new Error(
+          "Backend returned invalid JSON."
+        );
+      }
+
+      if (data.success) {
+        setConfirmedMatches((previousMatches) =>
+          previousMatches.map((match) =>
+            match.confirmation_id === confirmationId
+              ? {
+                  ...match,
+                  status:
+                    data.confirmation?.status ||
+                    newStatus,
+                }
+              : match
+          )
+        );
+      } else {
+        alert(
+          data.message ||
+            "Could not update match status."
+        );
+      }
+    } catch (err) {
+      console.error("Status update error:", err);
+
+      alert(
+        err?.message ||
+          "Could not update the match status."
+      );
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const getStatusLabel = (status) => {
+    if (status === "returned") {
+      return "Returned";
+    }
+
+    if (status === "contacted") {
+      return "Contacted";
+    }
+
+    return "Confirmed";
+  };
+
+  const getStatusClass = (status) => {
+    if (status === "returned") {
+      return "status-returned";
+    }
+
+    if (status === "contacted") {
+      return "status-contacted";
+    }
+
+    return "status-confirmed";
+  };
+
+  if (loading) {
+    return (
+      <div className="matches-page">
+
+        <div className="matches-hero">
+
+          <div className="ai-orb">
+            ✅
+          </div>
+
+          <div>
+            <span className="page-eyebrow">
+              SUCCESSFULLY MATCHED
+            </span>
+
+            <h1>
+              Confirmed Matches
+            </h1>
+
+            <p>
+              Loading your confirmed lost and
+              found item matches.
+            </p>
+          </div>
+
+          <div className="hero-confirmed-badge">
+            <span>⏳</span>
+
+            <div>
+              <strong>
+                Loading
+              </strong>
+
+              <small>
+                Please wait
+              </small>
+            </div>
+          </div>
+
+        </div>
+
+        <div className="matches-loading-card">
+
+          <div className="loading-icon">
+            🤖
+          </div>
+
+          <h2>
+            Loading confirmed matches...
+          </h2>
+
+          <p>
+            Getting your successfully matched
+            items.
+          </p>
+
+          <div className="loading-bar">
+            <div className="loading-progress" />
+          </div>
+
+          <span className="loading-note">
+            AI Lost &amp; Found
+          </span>
+
+        </div>
+
+      </div>
     );
   }
 
-  const data = await response.json();
+  if (error) {
+    return (
+      <div className="matches-page">
 
-  if (data.success) {
-    setConfirmedMatches(
-      (previousMatches) =>
-        previousMatches.map((match) =>
-          match.confirmation_id ===
-          confirmationId
-            ? {
-                ...match,
-                status:
-                  data.confirmation?.status ||
-                  newStatus,
-              }
-            : match
-        )
-    );
+        <div className="matches-error-card">
 
-    alert(
-      "Match status updated successfully."
-    );
-  } else {
-    alert(
-      data.message ||
-        "Could not update match status."
+          <div className="error-icon">
+            ⚠️
+          </div>
+
+          <span className="page-eyebrow">
+            CONNECTION ERROR
+          </span>
+
+          <h2>
+            Unable to load confirmations
+          </h2>
+
+          <p>
+            {error}
+          </p>
+
+          <button
+            className="primary-button"
+            onClick={fetchConfirmedMatches}
+          >
+            Try Again
+          </button>
+
+        </div>
+
+      </div>
     );
   }
-} catch (err) {
-  console.error(
-    "Status update error:",
-    err
-  );
 
-  alert(
-    "Could not update the match status. Please try again."
-  );
-} finally {
-  setUpdatingId(null);
-}
+  return (
+    <div className="matches-page">
 
+      {/* =====================================================
+          HERO
+      ====================================================== */}
 
-};
+      <div className="matches-hero">
 
-const getStatusLabel = (status) => {
-if (status === "returned") {
-return "Returned";
-}
-
-
-if (status === "contacted") {
-  return "Contacted";
-}
-
-return "Confirmed";
-
-
-};
-
-if (loading) {
-return ( <div className="confirmed-matches-page"> <div className="loading-card"> <div className="loading-icon">
-🤖 </div>
-
-
-      <h3>
-        Loading confirmed matches...
-      </h3>
-
-      <p>
-        Getting your successfully matched
-        lost and found items.
-      </p>
-
-      <div className="loading-bar">
-        <div className="loading-progress"></div>
-      </div>
-    </div>
-  </div>
-);
-
-
-}
-
-if (error) {
-return ( <div className="confirmed-matches-page"> <div className="error-card"> <div className="no-match-icon">
-⚠️ </div>
-
-
-      <h3>
-        Something went wrong
-      </h3>
-
-      <p>{error}</p>
-
-      <button
-        onClick={fetchConfirmedMatches}
-      >
-        Try Again
-      </button>
-    </div>
-  </div>
-);
-
-}
-
-return ( <div className="confirmed-matches-page"> <div className="matches-header"> <div> <h2>
-✅ Confirmed Matches </h2>
-
-
-      <p>
-        Your successfully matched lost and
-        found items.
-      </p>
-    </div>
-
-    <div className="match-count">
-      {confirmedMatches.length}{" "}
-      {confirmedMatches.length === 1
-        ? "Match"
-        : "Matches"}
-    </div>
-  </div>
-
-  {confirmedMatches.length === 0 ? (
-    <div className="confirmed-empty">
-      <div className="confirmed-empty-icon">
-        🔍
-      </div>
-
-      <h3>
-        No confirmed matches yet
-      </h3>
-
-      <p>
-        When you confirm an AI match,
-        it will appear here.
-      </p>
-    </div>
-  ) : (
-    <>
-      <div className="confirmed-match">
-        <div className="confirmed-icon">
-          🎉
+        <div className="ai-orb">
+          ✅
         </div>
 
         <div>
-          <h3>
-            Great! Your matches are confirmed.
-          </h3>
+          <span className="page-eyebrow">
+            SUCCESSFULLY MATCHED
+          </span>
+
+          <h1>
+            Confirmed Matches
+          </h1>
 
           <p>
-            Contact the finder using the phone
-            number provided below.
+            Your confirmed lost and found
+            item matches are shown here.
           </p>
         </div>
+
+        <div className="hero-confirmed-badge">
+
+          <span>
+            🤝
+          </span>
+
+          <div>
+            <strong>
+              {confirmedMatches.length}{" "}
+              {confirmedMatches.length === 1
+                ? "Match"
+                : "Matches"}
+            </strong>
+
+            <small>
+              Successfully confirmed
+            </small>
+          </div>
+
+        </div>
+
       </div>
 
-      <div className="matches-list">
-        {confirmedMatches.map(
-          (match, index) => {
-            const currentStatus =
-              match.status || "confirmed";
+      {/* =====================================================
+          EMPTY STATE
+      ====================================================== */}
 
-            const isUpdating =
-              updatingId ===
-              match.confirmation_id;
+      {confirmedMatches.length === 0 ? (
 
-            return (
-              <div
-                className="confirmed-match-card"
-                key={
-                  match.confirmation_id ??
-                  index
-                }
-              >
-                <div className="confirmed-card-header">
-                  <div className="match-item-icon">
-                    🎒
-                  </div>
+        <div className="matches-empty-state">
 
-                  <div className="confirmed-card-title">
-                    <span className="ai-label">
-                      MATCH CONFIRMED
-                    </span>
+          <div className="empty-state-icon">
+            🔍
+          </div>
 
-                    <h3>
-                      {match.lost_item_name ||
-                        "Lost Item"}
-                    </h3>
-                  </div>
+          <span className="page-eyebrow">
+            NOTHING HERE YET
+          </span>
 
-                  <div className="confirmed-status">
-                    ✓{" "}
-                    {getStatusLabel(
-                      currentStatus
-                    )}
-                  </div>
-                </div>
+          <h2>
+            No confirmed matches
+          </h2>
 
-                <div className="confirmed-comparison">
-                  <div className="confirmed-comparison-item">
-                    <small>
-                      YOU REPORTED
-                    </small>
+          <p>
+            When you confirm an AI match,
+            it will appear here with the
+            finder&apos;s contact information.
+          </p>
 
-                    <strong>
-                      {match.lost_item_name ||
-                        "Unknown Item"}
-                    </strong>
-                  </div>
+        </div>
 
-                  <div className="confirmed-arrow">
-                    ↔
-                  </div>
+      ) : (
 
-                  <div className="confirmed-comparison-item">
-                    <small>
-                      FOUND ITEM
-                    </small>
+        <>
 
-                    <strong>
-                      {match.found_item_name ||
-                        "Unknown Item"}
-                    </strong>
-                  </div>
-                </div>
+          {/* =================================================
+              SUMMARY
+          ================================================== */}
 
-                {match.description && (
-                  <div className="match-description">
-                    <p>
-                      {match.description}
-                    </p>
-                  </div>
-                )}
+          <div className="confirmed-summary">
 
-                <div className="match-details">
-                  {match.location && (
-                    <div className="detail">
-                      <span>
-                        📍
-                      </span>
+            <div className="summary-icon">
+              🎉
+            </div>
 
-                      <div>
-                        <small>
-                          Location
-                        </small>
+            <div>
 
-                        <strong>
-                          {
-                            match.location
-                          }
-                        </strong>
-                      </div>
-                    </div>
-                  )}
+              <span>
+                MATCHES CONFIRMED
+              </span>
 
-                  {match.date && (
-                    <div className="detail">
-                      <span>
-                        📅
-                      </span>
+              <h2>
+                You have{" "}
+                {confirmedMatches.length}{" "}
+                confirmed{" "}
+                {confirmedMatches.length === 1
+                  ? "match"
+                  : "matches"}
+              </h2>
 
-                      <div>
-                        <small>
-                          Date
-                        </small>
+              <p>
+                Contact the finder and update
+                the match status as it progresses.
+              </p>
 
-                        <strong>
-                          {match.date}
-                        </strong>
-                      </div>
-                    </div>
-                  )}
+            </div>
 
-                  {match.time && (
-                    <div className="detail">
-                      <span>
-                        🕒
-                      </span>
+          </div>
 
-                      <div>
-                        <small>
-                          Time
-                        </small>
+          {/* =================================================
+              SUCCESS INFORMATION
+          ================================================== */}
 
-                        <strong>
-                          {match.time}
-                        </strong>
-                      </div>
-                    </div>
-                  )}
+          <div className="confirmation-success">
 
-                  {match.contact && (
-                    <div className="detail">
-                      <span>
-                        📞
-                      </span>
+            <div className="confirmation-success-icon">
+              ✓
+            </div>
 
-                      <div>
-                        <small>
-                          Contact
-                        </small>
+            <div className="confirmation-content">
 
-                        <strong>
-                          {match.contact}
-                        </strong>
-                      </div>
-                    </div>
-                  )}
-                </div>
+              <span className="confirmation-label">
+                SUCCESS
+              </span>
 
-                <div className="status-update">
-                  <label>
-                    Update Status
-                  </label>
+              <h3>
+                Your AI match has been confirmed
+              </h3>
 
-                  <select
-                    value={currentStatus}
-                    disabled={isUpdating}
-                    onChange={(event) =>
-                      handleStatusChange(
-                        match.confirmation_id,
-                        event.target.value
-                      )
+              <p>
+                The lost and found reports have
+                been connected successfully.
+              </p>
+
+            </div>
+
+          </div>
+
+          {/* =================================================
+              CONFIRMED MATCHES
+          ================================================== */}
+
+          <div className="confirmed-list">
+
+            {confirmedMatches.map(
+              (match, index) => {
+
+                const currentStatus =
+                  match.status ||
+                  "confirmed";
+
+                const isUpdating =
+                  updatingId ===
+                  match.confirmation_id;
+
+                return (
+                  <div
+                    className="confirmed-card"
+                    key={
+                      match.confirmation_id ??
+                      index
                     }
                   >
-                    <option value="confirmed">
-                      Confirmed
-                    </option>
 
-                    <option value="contacted">
-                      Contacted
-                    </option>
+                    {/* ================================
+                        CARD HEADER
+                    ================================= */}
 
-                    <option value="returned">
-                      Returned
-                    </option>
-                  </select>
+                    <div className="confirmed-card-top">
 
-                  {isUpdating && (
-                    <span>
-                      Updating...
-                    </span>
-                  )}
-                </div>
+                      <div className="confirmed-item-icon">
+                        🎒
+                      </div>
 
-                <div className="confirmed-card-footer">
-                  <span>
-                    Confirmation ID: #
-                    {match.confirmation_id}
-                  </span>
+                      <div className="confirmed-title">
 
-                  <span>
-                    Status:{" "}
-                    {getStatusLabel(
-                      currentStatus
+                        <span className="confirmed-label">
+                          ✓ MATCH CONFIRMED
+                        </span>
+
+                        <h2>
+                          {match.lost_item_name ||
+                            "Lost Item"}
+                        </h2>
+
+                        <p>
+                          AI Lost &amp; Found
+                          Confirmation
+                        </p>
+
+                      </div>
+
+                      <div
+                        className={`confirmed-status-pill ${getStatusClass(
+                          currentStatus
+                        )}`}
+                      >
+
+                        <span>
+                          ✓
+                        </span>
+
+                        {getStatusLabel(
+                          currentStatus
+                        )}
+
+                      </div>
+
+                    </div>
+
+                    {/* ================================
+                        LOST → FOUND CONNECTION
+                    ================================= */}
+
+                    <div className="match-connection">
+
+                      <div className="connection-item">
+
+                        <span>
+                          YOU REPORTED
+                        </span>
+
+                        <strong>
+                          {match.lost_item_name ||
+                            "Unknown Item"}
+                        </strong>
+
+                      </div>
+
+                      <div className="connection-line">
+
+                        <span>
+                          →
+                        </span>
+
+                      </div>
+
+                      <div className="connection-item">
+
+                        <span>
+                          FOUND ITEM
+                        </span>
+
+                        <strong>
+                          {match.found_item_name ||
+                            "Unknown Item"}
+                        </strong>
+
+                      </div>
+
+                    </div>
+
+                    {/* ================================
+                        DESCRIPTION
+                    ================================= */}
+
+                    {match.description && (
+
+                      <div className="confirmed-description">
+
+                        <span>
+                          ITEM DESCRIPTION
+                        </span>
+
+                        <p>
+                          {match.description}
+                        </p>
+
+                      </div>
+
                     )}
-                  </span>
-                </div>
-              </div>
-            );
-          }
-        )}
-      </div>
-    </>
-  )}
-</div>
 
+                    {/* ================================
+                        DETAILS
+                    ================================= */}
 
-);
+                    <div className="confirmed-info-grid">
+
+                      {match.location && (
+
+                        <div className="confirmed-info">
+
+                          <span className="info-icon">
+                            📍
+                          </span>
+
+                          <div>
+
+                            <small>
+                              LOCATION
+                            </small>
+
+                            <strong>
+                              {match.location}
+                            </strong>
+
+                          </div>
+
+                        </div>
+
+                      )}
+
+                      {match.date && (
+
+                        <div className="confirmed-info">
+
+                          <span className="info-icon">
+                            📅
+                          </span>
+
+                          <div>
+
+                            <small>
+                              DATE
+                            </small>
+
+                            <strong>
+                              {match.date}
+                            </strong>
+
+                          </div>
+
+                        </div>
+
+                      )}
+
+                      {match.time && (
+
+                        <div className="confirmed-info">
+
+                          <span className="info-icon">
+                            🕒
+                          </span>
+
+                          <div>
+
+                            <small>
+                              TIME
+                            </small>
+
+                            <strong>
+                              {match.time}
+                            </strong>
+
+                          </div>
+
+                        </div>
+
+                      )}
+
+                    </div>
+
+                    {/* ================================
+                        FINDER CONTACT
+                    ================================= */}
+
+                    <div className="finder-contact">
+
+                      <div className="contact-icon">
+                        📞
+                      </div>
+
+                      <div>
+
+                        <small>
+                          FINDER CONTACT
+                        </small>
+
+                        <strong>
+                          {match.contact ||
+                            "Contact information not provided"}
+                        </strong>
+
+                      </div>
+
+                      {match.contact && (
+
+                        <a
+                          className="call-button"
+                          href={`tel:${match.contact}`}
+                        >
+                          Call Finder
+                        </a>
+
+                      )}
+
+                    </div>
+
+                    {/* ================================
+                        STATUS
+                    ================================= */}
+
+                    <div className="status-section">
+
+                      <div>
+
+                        <span>
+                          MATCH PROGRESS
+                        </span>
+
+                        <strong>
+                          {isUpdating
+                            ? "Updating status..."
+                            : "Update Match Status"}
+                        </strong>
+
+                      </div>
+
+                      <div className="status-control">
+
+                        {isUpdating && (
+                          <span>
+                            Saving...
+                          </span>
+                        )}
+
+                        <select
+                          value={currentStatus}
+                          disabled={isUpdating}
+                          onChange={(event) =>
+                            handleStatusChange(
+                              match.confirmation_id,
+                              event.target.value
+                            )
+                          }
+                        >
+
+                          <option value="confirmed">
+                            Confirmed
+                          </option>
+
+                          <option value="contacted">
+                            Contacted
+                          </option>
+
+                          <option value="returned">
+                            Returned
+                          </option>
+
+                        </select>
+
+                      </div>
+
+                    </div>
+
+                    {/* ================================
+                        FOOTER
+                    ================================= */}
+
+                    <div className="confirmed-footer">
+
+                      <span>
+                        Confirmation ID
+                      </span>
+
+                      <strong>
+                        #
+                        {match.confirmation_id}
+                      </strong>
+
+                    </div>
+
+                  </div>
+                );
+              }
+            )}
+
+          </div>
+
+        </>
+
+      )}
+
+    </div>
+  );
 }
 
 export default ConfirmedMatches;
+
