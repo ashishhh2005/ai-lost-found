@@ -1,29 +1,147 @@
-from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
 from datetime import datetime
+import re
+import math
 
 
 # ============================================================
-# AI MODEL
+# LIGHTWEIGHT AI TEXT MATCHING
+# ============================================================
+#
+# This version is designed for low-memory cloud deployment.
+# It does NOT load SentenceTransformer/PyTorch.
+#
+# It uses:
+#   - token similarity
+#   - keyword overlap
+#   - character similarity
+#   - location similarity
+#   - time similarity
+#
+# This keeps the backend well below Render's memory limit.
 # ============================================================
 
-model = None
+
+# ============================================================
+# TEXT NORMALIZATION
+# ============================================================
+
+def normalize_text(text):
+    if not text:
+        return ""
+
+    text = str(text).lower().strip()
+
+    # Remove punctuation
+    text = re.sub(r"[^a-z0-9\s]", " ", text)
+
+    # Remove extra spaces
+    text = re.sub(r"\s+", " ", text)
+
+    return text
 
 
-def get_model():
-    global model
+# ============================================================
+# TOKENIZATION
+# ============================================================
 
-    if model is None:
-        print("Loading AI model...")
+def get_tokens(text):
+    normalized = normalize_text(text)
 
-        model = SentenceTransformer(
-            "sentence-transformers/all-MiniLM-L6-v2",
-            device="cpu"
-        )
+    if not normalized:
+        return set()
 
-        print("AI model loaded successfully!")
+    return set(normalized.split())
 
-    return model
+
+# ============================================================
+# JACCARD SIMILARITY
+# ============================================================
+
+def jaccard_similarity(text1, text2):
+
+    tokens1 = get_tokens(text1)
+    tokens2 = get_tokens(text2)
+
+    if not tokens1 or not tokens2:
+        return 0.0
+
+    intersection = tokens1.intersection(tokens2)
+    union = tokens1.union(tokens2)
+
+    if not union:
+        return 0.0
+
+    return len(intersection) / len(union)
+
+
+# ============================================================
+# CHARACTER SIMILARITY
+# ============================================================
+
+def character_similarity(text1, text2):
+
+    text1 = normalize_text(text1)
+    text2 = normalize_text(text2)
+
+    if not text1 or not text2:
+        return 0.0
+
+    if text1 == text2:
+        return 1.0
+
+    # Lightweight dynamic programming
+    # for edit-distance similarity.
+    #
+    # We only keep two rows in memory.
+    len1 = len(text1)
+    len2 = len(text2)
+
+    if len1 > 200:
+        text1 = text1[:200]
+        len1 = 200
+
+    if len2 > 200:
+        text2 = text2[:200]
+        len2 = 200
+
+    previous = list(range(len2 + 1))
+
+    for i in range(1, len1 + 1):
+
+        current = [i]
+
+        for j in range(1, len2 + 1):
+
+            insertion = current[j - 1] + 1
+
+            deletion = previous[j] + 1
+
+            replacement = previous[j - 1]
+
+            if text1[i - 1] != text2[j - 1]:
+                replacement += 1
+
+            current.append(
+                min(
+                    insertion,
+                    deletion,
+                    replacement
+                )
+            )
+
+        previous = current
+
+    distance = previous[len2]
+
+    max_length = max(len1, len2)
+
+    if max_length == 0:
+        return 1.0
+
+    return max(
+        0.0,
+        1.0 - (distance / max_length)
+    )
 
 
 # ============================================================
@@ -35,30 +153,38 @@ def calculate_text_similarity(text1, text2):
     if not text1 or not text2:
         return 0.0
 
-    text1 = str(text1).strip()
-    text2 = str(text2).strip()
+    text1 = normalize_text(text1)
+    text2 = normalize_text(text2)
 
     if not text1 or not text2:
         return 0.0
 
-    ai_model = get_model()
+    if text1 == text2:
+        return 1.0
 
-    embeddings = ai_model.encode(
-        [text1, text2],
-        batch_size=2,
-        show_progress_bar=False,
-        convert_to_numpy=True
+    # Token overlap
+    token_score = jaccard_similarity(
+        text1,
+        text2
     )
 
-    similarity = cosine_similarity(
-        [embeddings[0]],
-        [embeddings[1]]
-    )[0][0]
+    # Character similarity
+    character_score = character_similarity(
+        text1,
+        text2
+    )
+
+    # Give more importance to actual words.
+    final_score = (
+        token_score * 0.65
+        +
+        character_score * 0.35
+    )
 
     return float(
         max(
             0.0,
-            min(1.0, similarity)
+            min(1.0, final_score)
         )
     )
 
@@ -72,8 +198,8 @@ def calculate_item_name_similarity(item1, item2):
     if not item1 or not item2:
         return 0.0
 
-    item1 = str(item1).strip().lower()
-    item2 = str(item2).strip().lower()
+    item1 = normalize_text(item1)
+    item2 = normalize_text(item2)
 
     if not item1 or not item2:
         return 0.0
@@ -81,9 +207,29 @@ def calculate_item_name_similarity(item1, item2):
     if item1 == item2:
         return 1.0
 
-    return calculate_text_similarity(
+    # Token similarity
+    token_score = jaccard_similarity(
         item1,
         item2
+    )
+
+    # Character similarity
+    character_score = character_similarity(
+        item1,
+        item2
+    )
+
+    final_score = (
+        token_score * 0.70
+        +
+        character_score * 0.30
+    )
+
+    return float(
+        max(
+            0.0,
+            min(1.0, final_score)
+        )
     )
 
 
@@ -99,8 +245,8 @@ def calculate_location_similarity(
     if not location1 or not location2:
         return 0.0
 
-    location1 = str(location1).strip().lower()
-    location2 = str(location2).strip().lower()
+    location1 = normalize_text(location1)
+    location2 = normalize_text(location2)
 
     if not location1 or not location2:
         return 0.0
@@ -108,37 +254,26 @@ def calculate_location_similarity(
     if location1 == location2:
         return 1.0
 
-    words1 = set(location1.split())
-    words2 = set(location2.split())
-
-    if words1 and words2:
-
-        intersection = words1.intersection(words2)
-        union = words1.union(words2)
-
-        word_similarity = (
-            len(intersection) / len(union)
-        )
-
-    else:
-
-        word_similarity = 0.0
-
-    semantic_similarity = calculate_text_similarity(
+    token_score = jaccard_similarity(
         location1,
         location2
     )
 
-    score = (
-        word_similarity * 0.4
+    character_score = character_similarity(
+        location1,
+        location2
+    )
+
+    final_score = (
+        token_score * 0.70
         +
-        semantic_similarity * 0.6
+        character_score * 0.30
     )
 
     return float(
         max(
             0.0,
-            min(1.0, score)
+            min(1.0, final_score)
         )
     )
 
@@ -158,6 +293,10 @@ def parse_datetime(
     date_string = str(date_value).strip()
     time_string = str(time_value).strip()
 
+    # --------------------------------------------------------
+    # Normalize seconds
+    # --------------------------------------------------------
+
     if len(time_string) >= 8:
 
         try:
@@ -171,6 +310,10 @@ def parse_datetime(
 
             pass
 
+    # --------------------------------------------------------
+    # Standard format
+    # --------------------------------------------------------
+
     try:
 
         return datetime.strptime(
@@ -182,6 +325,10 @@ def parse_datetime(
 
         pass
 
+    # --------------------------------------------------------
+    # ISO format
+    # --------------------------------------------------------
+
     try:
 
         return datetime.fromisoformat(
@@ -190,7 +337,9 @@ def parse_datetime(
 
     except ValueError:
 
-        return None
+        pass
+
+    return None
 
 
 # ============================================================
@@ -215,15 +364,6 @@ def calculate_time_similarity(
     )
 
     if datetime1 is None or datetime2 is None:
-
-        print(
-            "Time parsing failed:",
-            date1,
-            time1,
-            date2,
-            time2
-        )
-
         return 0.0
 
     difference = abs(
@@ -276,10 +416,18 @@ def calculate_final_score(
     time_score
 ):
 
+    # --------------------------------------------------------
+    # WEIGHTS
+    # --------------------------------------------------------
+
     item_name_weight = 0.30
     text_weight = 0.35
     location_weight = 0.20
     time_weight = 0.15
+
+    # --------------------------------------------------------
+    # FINAL SCORE
+    # --------------------------------------------------------
 
     final_score = (
 
