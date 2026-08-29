@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import "./App.css";
 
 import ReportLost from "./pages/ReportLost";
@@ -10,9 +10,19 @@ import ConfirmedMatches from "./pages/ConfirmedMatches";
 // =========================================
 // PRODUCTION BACKEND URL
 // =========================================
-
+//
+// IMPORTANT:
+// The current deployed backend is:
+// https://ai-lost-found-bamz.onrender.com
+//
+// VITE_API_URL can override this when configured
+// in Render or frontend/.env
+//
 const API_URL =
+  import.meta.env.VITE_API_URL ||
   "https://ai-lost-found-backend.onrender.com";
+
+console.log("Frontend API URL:", API_URL);
 
 function App() {
   // =========================================
@@ -28,7 +38,7 @@ function App() {
 
     const id = Number(savedId);
 
-    return Number.isNaN(id) ? null : id;
+    return Number.isNaN(id) || id <= 0 ? null : id;
   });
 
   // =========================================
@@ -44,10 +54,8 @@ function App() {
   const handleLostItemSubmitted = (id) => {
     const numericId = Number(id);
 
-    console.log(
-      "Lost item ID:",
-      numericId
-    );
+    console.log("Lost item ID:", numericId);
+    console.log("Using backend:", API_URL);
 
     if (!Number.isNaN(numericId) && numericId > 0) {
       setLostItemId(numericId);
@@ -66,9 +74,7 @@ function App() {
   // =========================================
 
   const startNewLostReport = () => {
-    localStorage.removeItem(
-      "lostItemId"
-    );
+    localStorage.removeItem("lostItemId");
 
     setLostItemId(null);
     setPage("lost");
@@ -83,12 +89,6 @@ function App() {
       setPage("matches");
       return;
     }
-
-    // Do NOT automatically fetch the latest
-    // lost item from the backend.
-    //
-    // This prevents a new user/incognito user
-    // from seeing another user's lost item.
 
     setPage("lost");
   };
@@ -119,9 +119,7 @@ function App() {
 
           <button
             className="brand"
-            onClick={() =>
-              goToPage("home")
-            }
+            onClick={() => goToPage("home")}
           >
             <span className="brand-icon">
               🔎
@@ -135,9 +133,7 @@ function App() {
           <div className="nav-buttons">
 
             <button
-              onClick={() =>
-                goToPage("home")
-              }
+              onClick={() => goToPage("home")}
               className={
                 page === "home"
                   ? "active"
@@ -159,9 +155,7 @@ function App() {
             </button>
 
             <button
-              onClick={() =>
-                goToPage("found")
-              }
+              onClick={() => goToPage("found")}
               className={
                 page === "found"
                   ? "active"
@@ -183,9 +177,7 @@ function App() {
             </button>
 
             <button
-              onClick={() =>
-                goToPage("confirmed")
-              }
+              onClick={() => goToPage("confirmed")}
               className={
                 page === "confirmed"
                   ? "active"
@@ -214,8 +206,6 @@ function App() {
         {page === "home" && (
 
           <div className="home-page">
-
-            {/* HERO */}
 
             <section className="hero-section">
 
@@ -248,9 +238,7 @@ function App() {
 
                 <button
                   className="secondary-home-button"
-                  onClick={() =>
-                    goToPage("found")
-                  }
+                  onClick={() => goToPage("found")}
                 >
                   <span>📦</span>
                   Report Found Item
@@ -510,9 +498,7 @@ function App() {
         {page === "lost" && (
 
           <ReportLost
-            onSubmitted={
-              handleLostItemSubmitted
-            }
+            onSubmitted={handleLostItemSubmitted}
           />
 
         )}
@@ -581,4 +567,3 @@ function App() {
 }
 
 export default App;
-
