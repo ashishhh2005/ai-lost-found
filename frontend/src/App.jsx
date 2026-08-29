@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import "./App.css";
 
@@ -37,61 +38,6 @@ function App() {
   const [page, setPage] = useState("home");
 
   // =========================================
-  // RECOVER LOST ITEM FROM BACKEND
-  // =========================================
-
-  const recoverLostItem = async () => {
-    try {
-      const response = await fetch(
-        `${API_URL}/lost-items/latest`
-      );
-
-      if (!response.ok) {
-        return null;
-      }
-
-      const data = await response.json();
-
-      if (
-        data.success &&
-        data.item &&
-        data.item.id
-      ) {
-        const id = Number(data.item.id);
-
-        setLostItemId(id);
-
-        localStorage.setItem(
-          "lostItemId",
-          String(id)
-        );
-
-        return id;
-      }
-    } catch (error) {
-      console.error(
-        "Could not recover lost item:",
-        error
-      );
-    }
-
-    return null;
-  };
-
-  // =========================================
-  // AUTOMATICALLY RECOVER ID WHEN APP LOADS
-  // =========================================
-
-  useEffect(() => {
-    const savedId =
-      localStorage.getItem("lostItemId");
-
-    if (!savedId) {
-      recoverLostItem();
-    }
-  }, []);
-
-  // =========================================
   // LOST ITEM SUBMITTED
   // =========================================
 
@@ -103,14 +49,16 @@ function App() {
       numericId
     );
 
-    setLostItemId(numericId);
+    if (!Number.isNaN(numericId) && numericId > 0) {
+      setLostItemId(numericId);
 
-    localStorage.setItem(
-      "lostItemId",
-      String(numericId)
-    );
+      localStorage.setItem(
+        "lostItemId",
+        String(numericId)
+      );
 
-    setPage("matches");
+      setPage("matches");
+    }
   };
 
   // =========================================
@@ -130,19 +78,17 @@ function App() {
   // OPEN AI MATCHES
   // =========================================
 
-  const openMatches = async () => {
+  const openMatches = () => {
     if (lostItemId) {
       setPage("matches");
       return;
     }
 
-    const recoveredId =
-      await recoverLostItem();
-
-    if (recoveredId) {
-      setPage("matches");
-      return;
-    }
+    // Do NOT automatically fetch the latest
+    // lost item from the backend.
+    //
+    // This prevents a new user/incognito user
+    // from seeing another user's lost item.
 
     setPage("lost");
   };
@@ -492,9 +438,13 @@ function App() {
             <section className="features-section">
 
               <div className="feature-item">
-                <span>🧠</span>
+
+                <span>
+                  🧠
+                </span>
 
                 <div>
+
                   <strong>
                     Smart Matching
                   </strong>
@@ -502,13 +452,19 @@ function App() {
                   <p>
                     AI-powered similarity analysis
                   </p>
+
                 </div>
+
               </div>
 
               <div className="feature-item">
-                <span>📍</span>
+
+                <span>
+                  📍
+                </span>
 
                 <div>
+
                   <strong>
                     Location Analysis
                   </strong>
@@ -516,13 +472,19 @@ function App() {
                   <p>
                     Compare where items were reported
                   </p>
+
                 </div>
+
               </div>
 
               <div className="feature-item">
-                <span>⏱️</span>
+
+                <span>
+                  ⏱️
+                </span>
 
                 <div>
+
                   <strong>
                     Time Comparison
                   </strong>
@@ -530,7 +492,9 @@ function App() {
                   <p>
                     Analyze when items were reported
                   </p>
+
                 </div>
+
               </div>
 
             </section>
@@ -617,3 +581,4 @@ function App() {
 }
 
 export default App;
+
