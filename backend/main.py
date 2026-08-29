@@ -1,4 +1,3 @@
-```python
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -48,16 +47,17 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-
     allow_origins=[
         # Local frontend
         "http://localhost:5173",
         "http://127.0.0.1:5173",
 
-        # DEPLOYED FRONTEND
+        # Deployed backend
+        "https://ai-lost-found-bamz.onrender.com",
+
+        # Deployed frontend
         "https://ai-lost-found-1-3t38.onrender.com"
     ],
-
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -99,7 +99,6 @@ class UpdateStatusRequest(BaseModel):
 # ============================================================
 
 def get_db():
-
     db = SessionLocal()
 
     try:
@@ -115,7 +114,6 @@ def get_db():
 
 @app.get("/")
 def home():
-
     return {
         "message": "AI Lost & Found Backend is running!"
     }
@@ -127,7 +125,6 @@ def home():
 
 @app.get("/health")
 def health():
-
     return {
         "success": True,
         "message": "Backend is healthy"
