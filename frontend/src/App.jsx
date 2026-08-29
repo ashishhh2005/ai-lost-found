@@ -12,7 +12,7 @@ import ConfirmedMatches from "./pages/ConfirmedMatches";
 // =========================================
 
 const API_URL =
-  "https://ai-lost-found-bamz.onrender.com";
+  "https://ai-lost-found-backend.onrender.com";
 
 function App() {
   // =========================================
