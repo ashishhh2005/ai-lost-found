@@ -1,3 +1,4 @@
+
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -47,6 +48,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
+
     allow_origins=[
         # Local frontend
         "http://localhost:5173",
@@ -55,12 +57,13 @@ app.add_middleware(
         # Production frontend
         "https://ai-lost-found-frontend.onrender.com",
 
-        # Older frontend URL - kept for compatibility
+        # Older Render frontend URL
         "https://ai-lost-found-1-3t38.onrender.com",
 
-        # Backend itself
+        # Backend
         "https://ai-lost-found-backend.onrender.com"
     ],
+
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -106,7 +109,6 @@ def get_db():
 
     try:
         yield db
-
     finally:
         db.close()
 
@@ -643,9 +645,7 @@ def confirm_match(
 # UPDATE CONFIRMED MATCH STATUS
 # ============================================================
 
-@app.put(
-    "/confirmed-matches/{confirmation_id}/status"
-)
+@app.put("/confirmed-matches/{confirmation_id}/status")
 def update_confirmed_match_status(
     confirmation_id: int,
     request: UpdateStatusRequest,
@@ -662,7 +662,10 @@ def update_confirmed_match_status(
 
         return {
             "success": False,
-            "message": "Invalid status. Allowed statuses are: confirmed, contacted, returned."
+            "message": (
+                "Invalid status. Allowed statuses are: "
+                "confirmed, contacted, returned."
+            )
         }
 
     confirmation = (
@@ -737,9 +740,7 @@ def get_confirmed_matches(
 
         results.append({
             "confirmation_id": confirmation.id,
-
             "lost_item_id": confirmation.lost_item_id,
-
             "found_item_id": confirmation.found_item_id,
 
             "lost_item_name":
@@ -784,3 +785,4 @@ def get_confirmed_matches(
         "count": len(results),
         "confirmed_matches": results
     }
+
