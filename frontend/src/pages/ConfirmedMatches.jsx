@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import "./Matches.css";
 
-const API_URL = "https://ai-lost-found-bamz.onrender.com";
+const API_URL = "https://ai-lost-found-backend.onrender.com";
 
 function ConfirmedMatches() {
   const [confirmedMatches, setConfirmedMatches] = useState([]);

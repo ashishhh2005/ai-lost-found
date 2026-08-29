@@ -53,7 +53,7 @@ app.add_middleware(
         "http://127.0.0.1:5173",
 
         # Deployed backend
-        "https://ai-lost-found-bamz.onrender.com",
+        "https://ai-lost-found-backend.onrender.com",
 
         # Deployed frontend
         "https://ai-lost-found-1-3t38.onrender.com"

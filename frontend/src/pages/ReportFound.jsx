@@ -1,158 +1,218 @@
 import { useState } from "react";
 import "./ReportFound.css";
 
-const API_URL = "https://ai-lost-found-bamz.onrender.com";
+const API_URL = "https://ai-lost-found-backend.onrender.com";
 
 function ReportFound() {
-const [itemName, setItemName] = useState("");
-const [description, setDescription] = useState("");
-const [location, setLocation] = useState("");
-const [date, setDate] = useState("");
-const [time, setTime] = useState("");
-const [contact, setContact] = useState("");
-const [message, setMessage] = useState("");
+  const [itemName, setItemName] = useState("");
+  const [description, setDescription] = useState("");
+  const [location, setLocation] = useState("");
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
+  const [contact, setContact] = useState("");
+  const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-const handleSubmit = async (e) => {
-e.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
+    setSubmitting(true);
+    setMessage("Submitting...");
 
-setMessage("Submitting...");
+    try {
+      const response = await fetch(`${API_URL}/report-found`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          item_name: itemName,
+          description: description,
+          location: location,
+          date: date,
+          time: time,
+          contact: contact,
+        }),
+      });
 
-try {
-  const response = await fetch(`${API_URL}/report-found`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      item_name: itemName,
-      description: description,
-      location: location,
-      date: date,
-      time: time,
-      contact: contact,
-    }),
-  });
+      const responseText = await response.text();
 
-  const data = await response.json();
+      let data = {};
 
-  if (response.ok) {
-    if (data.duplicate === true) {
+      try {
+        data = responseText ? JSON.parse(responseText) : {};
+      } catch {
+        throw new Error(
+          `Backend returned invalid response: ${responseText}`
+        );
+      }
+
+      if (!response.ok) {
+        setMessage(
+          data.detail ||
+            data.message ||
+            `Server error: ${response.status}`
+        );
+        return;
+      }
+
+      const item = data?.item;
+
+      const id =
+        item?.id ??
+        data?.id ??
+        data?.found_item_id;
+
+      if (!id) {
+        console.error("Unexpected backend response:", data);
+
+        setMessage(
+          "Item was submitted, but the backend did not return an item ID."
+        );
+        return;
+      }
+
+      if (data.duplicate === true) {
+        setMessage(
+          `This found item has already been reported. ID: ${id}`
+        );
+        return;
+      }
+
       setMessage(
-        `This found item has already been reported. ID: ${data.item.id}`
+        `Found item reported successfully! ID: ${id}`
       );
-      return;
+
+      setItemName("");
+      setDescription("");
+      setLocation("");
+      setDate("");
+      setTime("");
+      setContact("");
+
+    } catch (error) {
+      console.error("Report Found Error:", error);
+
+      setMessage(
+        error?.message ||
+          "Cannot connect to the backend."
+      );
+    } finally {
+      setSubmitting(false);
     }
+  };
 
-    setMessage(
-      `Found item reported successfully! ID: ${data.item.id}`
-    );
+  return (
+    <div className="report-page">
+      <div className="report-container">
 
-    setItemName("");
-    setDescription("");
-    setLocation("");
-    setDate("");
-    setTime("");
-    setContact("");
-  } else {
-    setMessage(
-      data.detail ||
-        data.message ||
-        "Something went wrong."
-    );
-  }
-} catch (error) {
-  console.error("Report Found Error:", error);
-  setMessage("Cannot connect to the backend.");
-}
+        <h1>Report Found Item</h1>
 
+        <p>
+          Enter the details of the item you found.
+        </p>
 
-};
+        <form onSubmit={handleSubmit}>
 
-return ( <div className="report-page"> <div className="report-container"> <h1>Report Found Item</h1>
+          <label>Item Name</label>
 
+          <input
+            type="text"
+            placeholder="Example: Black Wallet"
+            value={itemName}
+            onChange={(e) =>
+              setItemName(e.target.value)
+            }
+            required
+            disabled={submitting}
+          />
 
-    <p>
-      Enter the details of the item you found.
-    </p>
+          <label>Description</label>
 
-    <form onSubmit={handleSubmit}>
-      <label>Item Name</label>
+          <textarea
+            placeholder="Describe the item..."
+            value={description}
+            onChange={(e) =>
+              setDescription(e.target.value)
+            }
+            required
+            disabled={submitting}
+          />
 
-      <input
-        type="text"
-        placeholder="Example: Black Wallet"
-        value={itemName}
-        onChange={(e) => setItemName(e.target.value)}
-        required
-      />
+          <label>Location</label>
 
-      <label>Description</label>
+          <input
+            type="text"
+            placeholder="Example: College Library"
+            value={location}
+            onChange={(e) =>
+              setLocation(e.target.value)
+            }
+            required
+            disabled={submitting}
+          />
 
-      <textarea
-        placeholder="Describe the item..."
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        required
-      />
+          <label>Date</label>
 
-      <label>Location</label>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) =>
+              setDate(e.target.value)
+            }
+            required
+            disabled={submitting}
+          />
 
-      <input
-        type="text"
-        placeholder="Example: College Library"
-        value={location}
-        onChange={(e) => setLocation(e.target.value)}
-        required
-      />
+          <label>Time</label>
 
-      <label>Date</label>
+          <input
+            type="time"
+            value={time}
+            onChange={(e) =>
+              setTime(e.target.value)
+            }
+            required
+            disabled={submitting}
+          />
 
-      <input
-        type="date"
-        value={date}
-        onChange={(e) => setDate(e.target.value)}
-        required
-      />
+          <label>Contact Information</label>
 
-      <label>Time</label>
+          <input
+            type="text"
+            placeholder="Example: 9876543210 or email@example.com"
+            value={contact}
+            onChange={(e) =>
+              setContact(e.target.value)
+            }
+            required
+            disabled={submitting}
+          />
 
-      <input
-        type="time"
-        value={time}
-        onChange={(e) => setTime(e.target.value)}
-        required
-      />
+          <small className="contact-help">
+            Provide a phone number or email so the owner can contact you.
+          </small>
 
-      <label>Contact Information</label>
+          <button
+            type="submit"
+            disabled={submitting}
+          >
+            {submitting
+              ? "Submitting..."
+              : "Submit Found Item"}
+          </button>
 
-      <input
-        type="text"
-        placeholder="Example: 9876543210 or email@example.com"
-        value={contact}
-        onChange={(e) => setContact(e.target.value)}
-        required
-      />
+        </form>
 
-      <small className="contact-help">
-        Provide a phone number or email so the owner can contact you.
-      </small>
+        {message && (
+          <p className="form-message">
+            {message}
+          </p>
+        )}
 
-      <button type="submit">
-        Submit Found Item
-      </button>
-    </form>
-
-    {message && (
-      <p className="form-message">
-        {message}
-      </p>
-    )}
-  </div>
-</div>
-
-
-);
+      </div>
+    </div>
+  );
 }
 
 export default ReportFound;

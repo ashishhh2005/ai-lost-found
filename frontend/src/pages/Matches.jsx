@@ -2,7 +2,9 @@
 import { useEffect, useState } from "react";
 import "./Matches.css";
 
-const API_URL = "https://ai-lost-found-bamz.onrender.com";
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  "https://ai-lost-found-backend.onrender.com";
 
 function Matches({ lostItemId }) {
   const [matches, setMatches] = useState([]);

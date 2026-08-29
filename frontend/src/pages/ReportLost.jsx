@@ -1,9 +1,8 @@
+
 import { useState } from "react";
 import "./ReportLost.css";
 
-const API_URL =
-  import.meta.env.VITE_API_URL ||
-  "https://ai-lost-found-bamz.onrender.com";
+const API_URL = "https://ai-lost-found-backend.onrender.com";
 
 function ReportLost({ onSubmitted }) {
   const [itemName, setItemName] = useState("");
@@ -13,46 +12,60 @@ function ReportLost({ onSubmitted }) {
   const [time, setTime] = useState("");
 
   const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    setSubmitting(true);
     setMessage("Submitting...");
 
     try {
-      const response = await fetch(
-        `${API_URL}/report-lost`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            item_name: itemName,
-            description: description,
-            location: location,
-            date: date,
-            time: time,
-          }),
-        }
-      );
+      const response = await fetch(`${API_URL}/report-lost`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          item_name: itemName,
+          description: description,
+          location: location,
+          date: date,
+          time: time,
+        }),
+      });
 
-      const data = await response.json();
+      const responseText = await response.text();
+
+      let data = {};
+
+      try {
+        data = responseText ? JSON.parse(responseText) : {};
+      } catch {
+        throw new Error(
+          `Backend returned invalid response: ${responseText}`
+        );
+      }
 
       if (!response.ok) {
         setMessage(
           data.detail ||
             data.message ||
-            "Something went wrong."
+            `Server error: ${response.status}`
         );
         return;
       }
 
-      const id = data?.item?.id;
+      const id =
+        data?.item?.id ??
+        data?.id ??
+        data?.lost_item_id;
 
       if (!id) {
+        console.error("Unexpected backend response:", data);
+
         setMessage(
-          "Lost item was submitted, but no item ID was returned."
+          "Item was submitted, but the backend did not return an item ID."
         );
         return;
       }
@@ -74,8 +87,11 @@ function ReportLost({ onSubmitted }) {
       console.error("Report Lost Error:", error);
 
       setMessage(
-        "Cannot connect to the backend."
+        error?.message ||
+          "Cannot connect to the backend."
       );
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -101,6 +117,7 @@ function ReportLost({ onSubmitted }) {
               setItemName(e.target.value)
             }
             required
+            disabled={submitting}
           />
 
           <label>Description</label>
@@ -112,6 +129,7 @@ function ReportLost({ onSubmitted }) {
               setDescription(e.target.value)
             }
             required
+            disabled={submitting}
           />
 
           <label>Location</label>
@@ -124,6 +142,7 @@ function ReportLost({ onSubmitted }) {
               setLocation(e.target.value)
             }
             required
+            disabled={submitting}
           />
 
           <label>Date</label>
@@ -135,6 +154,7 @@ function ReportLost({ onSubmitted }) {
               setDate(e.target.value)
             }
             required
+            disabled={submitting}
           />
 
           <label>Time</label>
@@ -146,10 +166,16 @@ function ReportLost({ onSubmitted }) {
               setTime(e.target.value)
             }
             required
+            disabled={submitting}
           />
 
-          <button type="submit">
-            Submit Lost Item
+          <button
+            type="submit"
+            disabled={submitting}
+          >
+            {submitting
+              ? "Submitting..."
+              : "Submit Lost Item"}
           </button>
 
         </form>
