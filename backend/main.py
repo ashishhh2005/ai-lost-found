@@ -1,3 +1,4 @@
+```python
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -47,11 +48,16 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
+
     allow_origins=[
+        # Local frontend
         "http://localhost:5173",
         "http://127.0.0.1:5173",
-        "https://ai-lost-found-bamz.onrender.com"
+
+        # DEPLOYED FRONTEND
+        "https://ai-lost-found-1-3t38.onrender.com"
     ],
+
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -937,3 +943,4 @@ def get_confirmed_matches(
         "count": len(results),
         "confirmed_matches": results
     }
+
